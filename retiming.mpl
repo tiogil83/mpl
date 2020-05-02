@@ -1585,3 +1585,4 @@ Tsub dump_rtl_net_names => << 'END' ;
 
 END
 
+return 1 ;
