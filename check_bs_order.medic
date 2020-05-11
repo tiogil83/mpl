@@ -1,0 +1,26 @@
+open_log /home/junw/bs_dist.log ;
+
+$top = "NV_gva_t0" ;
+set_top $top ;
+
+@bs_pins = get_pins -hier *capture_reg_reg/SI  
+push @bs_pins, (get_pins -hier *ten_shift_reg_reg/SI) ;
+push @bs_pins, (get_pins -hier *pad_tm_enable_shift_reg_reg/D) ;  
+push @bs_pins, (get_pins -hier *ten_inv_shift_reg_reg/D) ;
+
+plot_macros -no_labels ;
+
+foreach $bs_pin (@bs_pins) {
+  $root_pin = get_root -pin $bs_pin ;
+  $dist = get_dist $bs_pin $root_pin ;
+  if ($dist > 2000) {
+    lprint "$bs_pin $root_pin $dist Long_Dist\n" ;
+    ($x,$y) = get_pin_xy $root_pin ;
+    ($x_n,$y_n) = get_pin_xy $bs_pin ;
+    plot_line(-arrow=>"last", -name => "bs_order", $x, $y, $x_n, $y_n, -color => "red") ; 
+  }else{
+    lprint "$bs_pin $root_pin $dist OK_Dist\n" ;
+  }
+}
+
+close_log ;

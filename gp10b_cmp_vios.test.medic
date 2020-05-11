@@ -1,0 +1,85 @@
+my @pars = qw "GPAG0GP" ;
+foreach my $par(@pars){
+  open_log "/home/junw/gp10b/compare.${par}.new.log" ;
+  @viol_files = () ;
+  @viol_files_0p5v = () ;
+  @viol_files =  glob "/home/scratch.gp10b_partition_2/gp10b/gp10b/timing/gp10b/rep/${par}.*02300.*_si*std_min*.viol.gz" ;
+  @viol_files_0p5v =  glob "/home/scratch.gp10b_partition/gp10b/gp10b/timing/gp10b/rep/${par}.*02300.*_si*std_min*.viol.gz" ;
+  push @viol_files, @viol_files_0p5v ; 
+  
+  my @corners ;
+  
+  foreach $viol_file (@viol_files){
+    chomp $viol_file ;
+    load_vios $viol_file ;
+    $viol_file =~ /pt\.(\S+)\.std_min/ ;
+    $corner = $1 ;
+    push @corners $corner ; 
+  }
+  
+  @corners = remove_duplicates @corners ;
+  
+  @vios1 = () ; 
+  @vios2 = () ; 
+  @vios3 = () ; 
+  @vios4 = () ; 
+ 
+  @vio_corner1=();
+  @vio_corner2=();
+  @vio_corner3=();
+  @vio_corner4=();
+
+  select_vios -filter "project_corner=~/ffg_m40c_1p21v_min_si/ and type_class =~ /min_path/ and slack < -0.000 and start_pin !~ /ram_Inst/ and end_pin !~ /ram_Inst/" ; 
+  @vios1 = all_vios ;
+  foreach my $vio1 (@vios1){push @vio_corner1 attr_of_vio(end_pin=>$vio1);}
+  print "test1 ffg_m40c_1p21v_min_si $#vios1\n" ;
+  select_vios -filter "project_corner=~/ssg_0c_0p6v_min_si/ and type_class =~ /min_path/ and slack < -0.000 and start_pin !~ /ram_Inst/ and end_pin !~ /ram_Inst/" ;
+  @vios2 = all_vios ;
+  foreach my $vio2 (@vios2){push @vio_corner2 attr_of_vio(end_pin=>$vio2);}
+  print "test2 ssg_0c_0p6v_min_si $#vios2\n" ;
+  select_vios -filter "project_corner=~/ssg_0c_0p5v_min_si/ and type_class =~ /min_path/ and slack < -0.000 and start_pin !~ /ram_Inst/ and end_pin !~ /ram_Inst/" ;
+  @vios3 = all_vios ;
+  foreach my $vio3 (@vios3){push @vio_corner3 attr_of_vio(end_pin=>$vio3);}
+  print "test3 ssg_0c_0p5v_min_si $#vios3\n" ;
+  select_vios -filter "project_corner=~/ssg_105c_0p5v_min_si/ and type_class =~ /min_path/ and slack < -0.000 and start_pin !~ /ram_Inst/ and end_pin !~ /ram_Inst/" ;
+  @vios4 = all_vios ;
+  foreach my $vio4 (@vios4){push @vio_corner4 attr_of_vio(end_pin=>$vio4);}
+  print "test4 ssg_105c_0p5v_min_si $#vios4\n" ;
+  push @vio_corner1, @vio_corner2 ;
+   
+  @vio_corner1 = remove_duplicates @vio_corner1 ;
+  @vio_corner3 = remove_duplicates @vio_corner3 ; 
+  @vio_corner4 = remove_duplicates @vio_corner4 ; 
+
+  #Get common
+  $vios3_num = $#vio_corner3 + 1 ;
+  @common_num1 = () ;
+  @common_num1 = (get_intersection @vio_corner3 @vio_corner1) ;
+  $common_num1 = $#common_num1 + 1 ;
+  $common1{ssg_0c_0p5v_min_si} = $common_num1 ;
+  lprint "ssg_0c_0p5v_min_si ffg_m40c_1p21v_min_si\/ssg_0c_0p6v_min_si common viol: $common1{ssg_0c_0p5v_min_si} $vios3_num\n" ;
+  
+  $vios4_num = $#vio_corner4 + 1 ;
+  @common_num2 = () ;
+  @common_num2 = (get_intersection @vio_corner4 @vio_corner1) ;
+  $common_num2 = $#common_num2 + 1 ;
+  $common2{ssg_105c_0p5v_min_si} = $common_num2 ;
+  lprint "ssg_0c_0p5v_min_si ffg_m40c_1p21v_min_si\/ssg_0c_0p6v_min_si common viol: $common2{ssg_105c_0p5v_min_si} $vios4_num\n" ;
+  #Get difference
+  @diff_num = () ;
+  @diff_num = (get_missing @vio_corner3 @vio_corner1) ;
+  $diff_num = $#diff_num + 1 ;
+  $diff{ssg_0c_0p5v_min_si} = $diff_num ;
+  lprint "ssg_0c_0p5v_min_si ffg_m40c_1p21v_min_si\/ssg_0c_0p6v_min_si diff viol: $diff{ssg_0c_0p5v_min_si} $vios3_num\n" ;
+  @diff_num = () ;
+  @diff_num = (get_missing @vio_corner4 @vio_corner1) ;
+  $diff_num = $#diff_num + 1 ;
+  $diff{ssg_105c_0p5v_min_si} = $diff_num ;
+  lprint "ssg_105c_0p5v_min_si ffg_m40c_1p21v_min_si\/ssg_0c_0p6v_min_si diff viol: $diff{ssg_105c_0p5v_min_si} $vios4_num\n" ;
+  
+  `grep "common viol" /home/junw/gp10b/compare.${par}.new.log > /home/junw/gp10b/cp.txt.${par}.new` ;
+  `grep "diff viol" /home/junw/gp10b/compare.${par}.new.log > /home/junw/gp10b/diff.txt.${par}.new` ;
+  
+  #clear_vios ;
+  close_log ;
+}

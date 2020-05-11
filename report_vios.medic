@@ -1,0 +1,18 @@
+$top = get_top ;
+$ipo = get_ipo_num $top ;
+open_log /home/junw/$top.ipo$ipo.rep.txt ;
+lprint "Setup timing status\n" ;
+lprint (join "\n" (report_vios -by "module anno PS_CORNER" -show "wns(setup) tns(setup), bin(slack -step 0, -0.01, 10, -0.1, 10), count(pin)" -filter "file =~ 'std_max' && file =~ 'pba' ")) ;
+lprint "\n" ;
+lprint "Hold timing status\n" ;
+lprint (join "\n" (report_vios -by "module anno PS_CORNER" -show "wns(hold) tns(hold), bin(slack -step 0, -0.01, 10, -0.1, 10), count(pin)" -filter "file =~ 'min' && file =~ 'pba' ")) ;
+lprint "\n" ;
+lprint "Clock transtition status\n" ;
+lprint (join "\n" (report_vios -by "module anno PS_CORNER" -show "bin(slack) worst(slack)" -class tran -filter "type_class eq 'clock_max_tran' && file =~ 'pba' " -by "type_class")) ;
+lprint "\n" ;
+lprint "Data transtition status\n" ;
+lprint (join "\n" (report_vios -by "module anno PS_CORNER" -show "bin(slack) worst(slack)" -class tran -filter "type_class eq 'data_max_tran' && file =~ 'pba'" -by "type_class")) ; 
+lprint "\n" ;
+
+close_log ;
+exit ;

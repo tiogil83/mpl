@@ -1,0 +1,3461 @@
+$ftop_mod = nv_top
+
+sub gfs { get_flylines -slack $_[0] ; }
+sub pcnc  { plot_cells_near -delta 40 @_ ; }
+sub pcn   { plot_cells_near -delta 20 $_[0] ; }
+sub pcn10 { plot_cells_near -delta 10 $_[0] ; }
+sub pcn15 { plot_cells_near -delta 15 $_[0] ; }
+sub pcn20 { plot_cells_near -delta 20 $_[0] ; }
+sub pcn30 { plot_cells_near -delta 30 $_[0] ; }
+sub pcn40 { plot_cells_near -delta 40 $_[0] ; }
+sub pcn50 { plot_cells_near -delta 50 $_[0] ; }
+sub pcn100 { plot_cells_near -delta 100 $_[0] ; }
+sub pcn100 { plot_cells_near -delta 100 $_[0] ; }
+sub pcm { plot -color magenta $_[0] ; }
+sub pcr { plot -color red     $_[0] ; }
+sub pcb { plot -color blue    $_[0] ; }
+sub pcg { plot -color green   $_[0] ; }
+sub pcp { plot -color pink    $_[0] ; }
+sub pcc { plot -color cyan    $_[0] ; }
+sub pcy { plot -color yellow  $_[0] ; }
+sub pco { plot -color orange  $_[0] ; }
+
+sub insert_holdfix_cell_if_legal {}
+
+sub get_cap {
+    my $node = $_[0] ;
+    my $node_cap = (sprintf "%.3f", (get_total_cap $node)) ;
+    return ($node_cap)
+}
+
+sub get_tran {
+    my $node = $_[0] ;
+    my $node_tran = (sprintf "%.3f", (get_pin_tran $node)) ;
+    return ($node_tran)
+}
+
+sub unswap {
+    my $cell = $_[0] ;
+    my $ref = get_ref $cell ;
+    my $new_ref = $ref ; $new_ref =~ s/PO[0-9]+// ; $new_ref =~ s/TH$// ; $new_ref =~ s/HVT// ; $new_ref =~ s/LVT// ; $new_ref =~ s/UHT// ;
+    change_link $cell $new_ref
+}
+
+
+sub po2_swap {
+    if ($PROJECT =~ /t148/) { return ; } # po2 not supported by T148
+    my ($cell, $verbose) = @_ ;
+    if (scalar(@_) < 2) { $verbose = 0 ; }
+    my $ref = get_ref $cell ;
+    my $new_ref = $ref ; $new_ref =~ s/PO\d// ; $new_ref =~ s/HVT// ; $new_ref =~ s/TH$// ; $new_ref =~ s/LVT// ; $new_ref =~ s/UHT// ;
+    if ($new_ref !~ /PO2/) { $new_ref =~ s/$/PO2/ ; }
+
+    if ($ref =~ /PGAO.*CLAMP/) { 
+	lprint "WARNING:  $cell ($ref) is CLAMP cell and doesn't currently support PO2 swapping, no change made\n"
+    } elsif ($ref =~ /_A1J/) {
+	lprint "WARNING:  $cell ($ref) is A1J flop and doesn't currently support PO2 swapping (only lvtpo2), no change made\n"
+    } elsif ($ref =~ /SYNC/) {
+	lprint "WARNING:  $cell ($ref) is SYNC cell and doesn't currently support PO2 swapping, no change made\n"
+    } elsif (($ref =~ /PO2/) && ($ref !~ /PO2LVT/) && ($ref !~ /PO2HVT/)) {
+	lprint "WARNING:  $cell ($ref) is already a po2 cell, no change made\n"
+    } else {
+	if ($verbose) {
+	    lprint "change_link $cell $new_ref\n"
+	} else {
+	    change_link $cell $new_ref
+	}
+    }
+}
+
+sub po4_swap {
+    if ($PROJECT =~ /t148/) { return ; } # po4 not supported by T148
+    my ($cell, $verbose) = @_ ;
+    if (scalar(@_) < 2) { $verbose = 0 ; }
+    my $ref = get_ref $cell ;
+    my $new_ref = $ref ; $new_ref =~ s/PO\d// ; $new_ref =~ s/HVT// ; $new_ref =~ s/TH$// ; $new_ref =~ s/LVT// ; $new_ref =~ s/UHT// ;
+    if ($new_ref !~ /PO4/) { $new_ref =~ s/$/PO4/ ; }
+
+    if ($ref =~ /PGAO.*CLAMP/) { 
+	lprint "WARNING:  $cell ($ref) is CLAMP cell and doesn't currently support PO4 swapping, no change made\n"
+    } elsif ($ref =~ /_A1J/) {
+	lprint "WARNING:  $cell ($ref) is A1J flop and doesn't currently support PO4 swapping (only lvtpo4), no change made\n"
+    } elsif ($ref =~ /SYNC/) {
+	lprint "WARNING:  $cell ($ref) is SYNC cell and doesn't currently support PO4 swapping, no change made\n"
+    } elsif (($ref =~ /PO4/) && ($ref !~ /PO4LVT/) && ($ref !~ /PO4HVT/)) {
+	lprint "WARNING:  $cell ($ref) is already a po4 cell, no change made\n"
+    } else {
+	if ($verbose) {
+	    lprint "change_link $cell $new_ref\n"
+	} else {
+	    change_link $cell $new_ref
+	}
+    }
+}
+
+sub po4hvt_swap {
+    if ($PROJECT =~ /t148/) { return ; } # po4 not supported by T148
+    my ($cell, $verbose) = @_ ;
+    if (scalar(@_) < 2) { $verbose = 0 ; }
+    my $ref = get_ref $cell ;
+    my $new_ref = $ref ; $new_ref =~ s/PO\d// ; $new_ref =~ s/HVT// ; $new_ref =~ s/TH$// ; $new_ref =~ s/LVT// ; $new_ref =~ s/UHT// ;
+    if ($new_ref !~ /PO4HVT/) { $new_ref =~ s/$/PO4HVT/ ; }
+
+    if ($ref =~ /PGAO.*CLAMP/) { 
+	lprint "WARNING:  $cell ($ref) is CLAMP cell and doesn't currently support PO4HVT swapping, no change made\n"
+    } elsif ($ref =~ /_A1J/) {
+	lprint "WARNING:  $cell ($ref) is A1J flop and doesn't currently support PO4HVT swapping (only lvtpo4), no change made\n"
+    } elsif ($ref =~ /PGAO/) {
+	lprint "WARNING:  $cell ($ref) is PGAO cell and doesn't currently support PO4HVT swapping, but will swap to hvt if not already a th cell\n"
+	if (!is_th($cell)) { th_swap $cell ; }
+    } elsif ($ref =~ /SYNC/) {
+	lprint "WARNING:  $cell ($ref) is SYNC cell and doesn't currently support PO4HVT swapping, no change made\n"
+    } elsif ($ref =~ /PO4HVT/) {
+	lprint "WARNING:  $cell ($ref) is already a po4hvt cell, no change made\n"
+    } else {
+	if ($verbose) {
+	    lprint "change_link $cell $new_ref\n"
+	} else {
+	    change_link $cell $new_ref
+	}
+    }
+}
+
+sub hvt_swap {
+    if ($PROJECT =~ /t148/) { return ; } # po4 not supported by T148
+    my ($cell, $verbose) = @_ ;
+    if (scalar(@_) < 2) { $verbose = 0 ; }
+    my $ref = get_ref $cell ;
+    my $new_ref = $ref ; $new_ref =~ s/PO\d// ; $new_ref =~ s/HVT// ; $new_ref =~ s/TH$// ; $new_ref =~ s/LVT// ; $new_ref =~ s/UHT// ;
+    $new_ref =~ s/$/HVT/ ;
+
+    if ($ref =~ /PGAO.*CLAMP/) { 
+	lprint "WARNING:  $cell ($ref) is CLAMP cell and doesn't currently support PO4 swapping, no change made\n"
+    } elsif ($ref =~ /_A1J/) {
+	lprint "WARNING:  $cell ($ref) is A1J flop and doesn't currently support PO4 swapping (only lvtpo4), no change made\n"
+    } elsif ($ref =~ /SYNC/) {
+	lprint "WARNING:  $cell ($ref) is SYNC cell and doesn't currently support HVT swapping, no change made\n"
+    } elsif (($ref =~ /HVT/) && ($ref !~ /PO\d/)) {
+	lprint "WARNING:  $cell ($ref) is already an hvt cell, no change made\n"
+    } else {
+	if ($verbose) {
+	    lprint "change_link $cell $new_ref\n"
+	} else {
+	    change_link $cell $new_ref
+	}
+    }
+}
+
+
+
+sub uht_swap {
+    my $cell = $_[0] ;
+    my $ref = get_ref $cell ;
+    my $new_ref = $ref ; $new_ref =~ s/HVT$// ; $new_ref =~ s/TH$// ; $new_ref =~ s/PO\d// ; $new_ref =~ s/$/UHT/ ; 
+    if ($ref =~ /PGAO/) { 
+	lprint "WARNING:  $cell ($ref) is pgao cell and doesn't currently support lvt swapping, no change made\n"
+    } elsif ($ref =~ /LVT/) {
+	lprint "WARNING:  $cell ($ref) is already an lvt cell, no change made\n"
+    } else {
+	change_link $cell $new_ref
+    }
+}
+
+sub lvt_swap {
+    my $cell = $_[0] ;
+    my $ref = get_ref $cell ;
+    my $new_ref = $ref ; $new_ref =~ s/HVT// ; $new_ref =~ s/TH$// ; $new_ref =~ s/PO\d// ; if ($new_ref !~ /LVT/) { $new_ref =~ s/$/LVT/ ; }
+    if ($ref =~ /PGAO/) { 
+	lprint "WARNING:  $cell ($ref) is pgao cell and doesn't currently support lvt swapping, no change made\n"
+    } elsif (($ref =~ /LVT/) && ($ref !~ /PO4LVT/)) {
+	lprint "WARNING:  $cell ($ref) is already an lvt cell, no change made\n"
+    } else {
+	change_link $cell $new_ref
+    }
+}
+
+
+sub yank_buffer {
+    my $buf_to_remove = $_[0] ;
+    remove_buffer $buf_to_remove ;
+}
+sub yank_inv {
+    my $inv_to_remove = $_[0] ;
+    remove_inv $inv_to_remove ;
+}
+
+
+
+sub remove_buffer_keep_net {
+    my $buffer = $_[0] ;
+    my $buffer_par = translate_pin_to_par_name $buffer
+    my $local_buffer = translate_pin_to_local_pin_name $buffer
+    my $current_par = set_top
+    set_top $buffer_par
+    my $in_net = get_top_net $local_buffer/I ;
+    my $out_net = get_top_net $local_buffer/Z ;
+    remove_buffer $local_buffer ;
+    rename_net $in_net $out_net ;
+    lprint "DEBUG:  returning to $current_par\n";
+    set_top $current_par
+}
+
+
+sub rename_the_net {
+    my ($driving_pin, $new_net_name) = @_;
+    if ($driving_pin =~ /\*$/) { lprint "INFO:  Assuming output net is to be renamed of $driving_pin and pin name is 'Y'\n"; $driving_pin =~ s/$/\/Y/;
+    } elsif ($driving_pin !~ /\//) { lprint "\n"; lprint "WARNING:  expected a slash in call to rename_the_net $driving_pin\n"; lprint "\n"; }
+    my @driving_pins = get_pins ($driving_pin);
+    my $num_driving_pins = scalar (@driving_pins);
+    # handle case where either there are multiple pins or just one but it has no special naming && driven by Z or ZN output
+    if (($num_driving_pins > 1) || (scalar (@_) == 1 && ($num_driving_pins == 1) && ($driving_pins[0] =~ /Z[N]*$/))) {
+        foreach $individual_driving_pin (@driving_pins) {
+            $old_net_name = get_top_net ($individual_driving_pin);
+            $driving_cell = get_cells -of $individual_driving_pin
+
+		# handle case where a port is a load gracefully - don't rename net
+	    $num_all_loads      = scalar (get_loads -local           $individual_driving_pin) ;
+	    $num_wo_ports_loads = scalar (get_loads -local -no_ports $individual_driving_pin) ;
+	    if (( $num_all_loads != $num_wo_ports_loads ) || ( $num_wo_ports_loads < 1 )) {
+		lprint "INFO:  skipping $individual_driving_pin because it has at least 1 port load or no loads at all\n"; next ; }
+
+            if ($driving_cell =~ /CKBD\d+_G1B\d+I/) {        # make special provision for astro like naming
+                $new_net_name = $driving_cell ; $new_net_name =~ s/CKBD\d+_//;
+            } else {
+                $new_net_name = ${driving_cell}_out
+            }
+            if ($old_net_name !~ /^$new_net_name$/) {
+                rename_net $old_net_name $new_net_name
+            }
+        }
+    } else {
+	# handle case where a port is a load gracefully - don't rename net
+	my $num_all_loads      = scalar (get_loads -local           $driving_pin) ;
+	my $num_wo_ports_loads = scalar (get_loads -local -no_ports $driving_pin) ;
+	if (( $num_all_loads != $num_wo_ports_loads ) || ( $num_wo_ports_loads < 1 )) {
+	    lprint "INFO:  skipping $driving_pin because it has at least 1 port load or no loads at all\n";
+	    return ;
+	} else {
+
+	    my $old_net_name = get_top_net ($driving_pin);
+	    my $num_args = scalar (@_);
+	    if ($num_args < 2) {
+		$driving_cell = get_cells -of $driving_pin
+		if ($old_net_name !~ /^${driving_cell}_out$/) {
+		    rename_net $old_net_name ${driving_cell}_out
+		}
+	    } else {
+		if ($old_net_name !~ /^$new_net_name$/) {
+		    rename_net $old_net_name $new_net_name
+		}
+	    }
+        }
+    }
+}
+
+ 
+
+######################################################################
+
+
+sub translate_pin_to_par_name {
+    my ($pin_name $uc_lc) = @_;
+    lprint "DEBUG:  translate_pin_to_par_name is translating $pin_name\n";
+    my $par_uc_inst = $pin_name
+	# hack to work around SM hierarchy in fg0 chiplet
+    if (($par_uc_inst =~ /tpc..sml1c.fsm0/) && ($par_uc_inst !~ /TPC0_tpc0_sml1c_/)) {
+	$par_uc_inst =~ s?(F.*tpc0.sml1c.fsm0[a-z0-9_]*)/.*?$1? ;
+    } elsif (($par_uc_inst =~ /tpc..smmmio.g[mad]+sm0/) && ($par_uc_inst !~ /TPC0_tpc0_smmmio_/)) {
+	$par_uc_inst =~ s?(.*tpc0.smmmio.g[mad]+sm0[a-z0-9_]*)/.*?$1? ;
+    } elsif ($par_uc_inst =~ /G0TPC..g/) {
+	$par_uc_inst =~ s?(G0TPC./[a-z0-9_]*)/.*?$1? ;
+    #} elsif ($par_uc_inst =~ /GMA.TPC0.*tpc0/) {
+#	$par_uc_inst =~ s?(G0MA.TPC./[a-z0-9_]*)/.*?$1? ;
+    } elsif ($par_uc_inst =~ /u_ccroc.*u_core/) {
+	$par_uc_inst =~ s?(u_ccroc.*u_core./[a-z0-9_]*)/.*?$1? ;
+    } elsif ($par_uc_inst =~ /u_ccroc.*slice/) {
+	$par_uc_inst =~ s?(u_ccroc.*slice./[a-z0-9_]*)/.*?$1? ;
+    } elsif ($par_uc_inst =~ /u_ccroc.*l2c.shared/) {
+	$par_uc_inst =~ s?(u_ccroc.*shared/*)/.*?$1? ;
+    } else {
+	$par_uc_inst =~ s?/.*?? ; # lose first slash and everything after that, then translate to uppercase
+    }
+    lprint "DEBUG:  par_uc_inst = $par_uc_inst \n";
+    my $par_uc = get_ref $par_uc_inst
+    my $par_lc = $par_uc ; $par_lc =~ tr/A-Z/a-z/ ;
+    if ($uc_lc =~ /lc/) {	# return lowercase par name, else uppercase by default
+	return ($par_lc);
+    } else {
+	return ($par_uc);
+    }
+}
+
+sub translate_pin_to_port_name {
+    my ($pin_name) = $_[0];
+    lprint "DEBUG:  translate_pin_to_port_name is translating $pin_name\n";
+    my $port_name = $pin_name
+    if ($port_name =~ /u_ccroc.*u_core/) {
+	$port_name =~ s?u_ccroc/u_m_cluster/u_core./[a-z0-9_]*/?? ;	# lose 2 levels of hierarchy for CD100_core chiplet
+    } elsif ($port_name =~ /u_ccroc.*slice/) {
+	$port_name =~ s?u_ccroc/.*slice./[a-z0-9_]*/?? ;	# lose 2 levels of hierarchy for CD100_core chiplet
+    } elsif ($port_name =~ /u_ccroc.*u_m_cluster/) {
+#	$port_name =~ s?u_ccroc/u_m_cluster./[a-z0-9_]*/?? ;	# lose 2 levels of hierarchy for CD100_core chiplet
+    } else {
+	$port_name =~ s?[^/]*/?? ; # lose partition prefix and first slash
+    }
+    return ($port_name);
+}
+
+sub translate_pin_to_local_pin_name {
+    my ($pin_name) = $_[0];
+    lprint "DEBUG:  translate_pin_to_local_pin_name is translating $pin_name\n";
+    # hack for SM
+    if ($pin_name !~ /TPC0_tpc0_sml1c_/) {
+	$pin_name =~ s?F.*tpc..sml1c.(fsm0[a-z0-9_]*/)?$1?;
+    }
+    if ($pin_name !~ /TPC0_tpc0_smmmio_/) {
+	$pin_name =~ s?.*tpc..smmmio.(g[mad]+sm0[a-z0-9_]*/)?$1?;
+    }
+    if ($pin_name =~ /u_ccroc.u_m_cluster.l2c.slice0.ctrl/) { # for this case with a "/" in the instance name, just return the pin without the final substitution
+	$pin_name =~ s?u_ccroc/u_m_cluster.l2c.slice0.ctrl.?? ;
+	$local_pin_name = $pin_name
+	return ($local_pin_name)
+    }
+    if ($pin_name =~ /u_ccroc.u_m_cluster.l2c.shared/) { # for this case with a "/" in the instance name, just return the pin without the final substitution
+	$pin_name =~ s?u_ccroc/u_m_cluster.l2c.shared.?? ;
+	$local_pin_name = $pin_name
+	return ($local_pin_name)
+    }
+    $pin_name =~ s?G0TPC./[a-z0-9_]*/?? ;	# lose 2 levels of hierarchy for gx0 chiplet
+    $pin_name =~ s?u_ccroc/u_m_cluster/u_core./[a-z0-9_]*?? ;	# lose 2 levels of hierarchy for CD100_core chiplet
+    my $local_pin_name = $pin_name
+       $local_pin_name =~ s?[^/]*/?? ; # lose partition prefix and first slash
+    return ($local_pin_name);
+}
+
+
+sub rsx_translate_pin_to_par_name {
+    my $pin_name = $_[0]
+    my $par = translate_pin_to_par_name ($pin_name)
+    if      ($par =~ /^DI$/)      { return $par ;
+    } elsif ($par =~ /^FE$/)      { return $par ;
+    } elsif ($par =~ /^FH$/)      { return $par ;
+    } elsif ($par =~ /^HB$/)      { return $par ;
+    } elsif ($par =~ /^MC$/)      { return $par ;
+    } elsif ($par =~ /^PA$/)      { return $par ;
+    } elsif ($par =~ /^PC$/)      { return $par ;
+    } elsif ($par =~ /^PR$/)      { return $par ;
+    } elsif ($par =~ /^RS$/)      { return $par ;
+    } elsif ($par =~ /^SA[0-6]$/) { return $par ;
+    } elsif ($par =~ /^SB[0-6]$/) { return $par ;
+    } elsif ($par =~ /^TX[0-6]$/) { return $par ;
+    } elsif ($par =~ /^V[A-Z]$/)  { return $par ;
+    } else                        { return nv_top ;
+    }
+}
+
+########################################
+# helper routines to find driving port #
+########################################
+
+# translate from macro input to partition input from partition level
+
+# example 1:  find_partition_input (fbio0/NV_FBIO_sso_data01_f1/fb2fbio_sync_in_ptr[2]);  # startpoint is a macro pin
+# example 2:  find_partition_input (fbio0/NV_FBIO_sso_data01_f1_1_o0);                    # startpoint is a partition output
+
+sub find_partition_input {
+    my $pin_or_output_port = $_[0];
+    my $startpoint = "unknown" ;
+
+    @startpoints = get_fanin_pins -dff $pin_or_output_port;
+    if ((scalar (@startpoints)) != 1) {
+	lprint "ERROR:  expected sizeof startpoints to $pin_or_output_port to be exactly 1\n";
+    } else {
+	$startpoint = $startpoints[0];
+    }
+    return ($startpoint);
+}
+
+# example 1:  find_partition_output (fbio0/NV_FBIO_ssi_data01_f2/fbio2fb_rdat_out_rdat0[3])  # startpoint is a macro output, assume only SI pins and ports
+sub find_partition_output {
+    my $pin_or_input_port = $_[0];
+    my $output_port = "unknown" ;
+
+    @endpoints = get_fanout_pins -dff $pin_or_input_port;
+    if ((scalar (@endpoints)) < 1) {
+	lprint "ERROR:  expected sizeof endpoints from $pin_or_input_port to be greater than 0\n";
+    } elsif ((scalar (@endpoints)) == 1) { # it is likely a port
+	$output_port = get_ports -quiet -dir out $endpoints[0] ; # this will error if it doesn't exist
+	return ($output_port);
+    } else {
+	foreach $ep (@endpoints) {	# look for port, assume one or more endpoints may be pins within the partition but only one output port
+	    $is_it_a_pin = get_pins -warn_only -quiet $ep
+	    if ((scalar ($is_it_a_pin)) < 1) {	# it must be a port
+		$output_port = get_ports -quiet -dir out $ep ; # this will error if it doesn't exist
+		return ($output_port);
+	    }
+	}
+    }
+    return ($output_port);
+}
+
+
+
+######################################################################
+
+
+sub get_opt_size {
+    my ($net_cap, $min_size, $max_size) = @_;
+    my $desired_size;
+    if (scalar(@_) == 1) {
+	$min_size = 1 ; # default min/max
+	$max_size = 16
+    } elsif (scalar(@_) == 2) {
+	$max_size = 16 ; # then min_size is being set, if 3 args, then min and max are being set
+    }
+
+    if      ($net_cap > 0.080) { $desired_size = 16 ;
+    } elsif ($net_cap > 0.065) { $desired_size = 14 ; # added 8/15/13
+    } elsif ($net_cap > 0.055) { $desired_size = 12 ;
+    } elsif ($net_cap > 0.047) { $desired_size = 10 ; # added 8/15/13
+    } elsif ($net_cap > 0.036) { $desired_size =  8 ;
+    } elsif ($net_cap > 0.025) { $desired_size =  6 ;
+    } elsif ($net_cap > 0.018) { $desired_size =  4 ;
+    } elsif ($net_cap > 0.010) { $desired_size =  3 ;
+    } elsif ($net_cap > 0.005) { $desired_size =  2 ;
+    } elsif ($net_cap > 0.001) { $desired_size =  1 ;
+    } else                     { $desired_size =  0 ;
+    }
+
+    if      ($desired_size > $max_size) { return $max_size ;
+    } elsif ($desired_size < $min_size) { return $min_size ;
+    } else                              { return $desired_size ;
+    }
+}
+
+sub has_port_loads {
+    my ($driving_pin) = @_;
+    $has_port_load = 0;
+
+    # handle case where a port is a load gracefully - don't rename net
+    $num_all_loads      = scalar (get_loads -local           $driving_pin) ;
+    $num_wo_ports_loads = scalar (get_loads -local -no_ports $driving_pin) ;
+    if (( $num_all_loads != $num_wo_ports_loads ) || ( $num_wo_ports_loads < 1 )) {
+        lprint "INFO:  skipping $driving_pin because it has at least 1 port load or no loads at all\n";
+	$has_port_load = 1
+    }
+    return $has_port_load
+}
+
+
+
+# assume current partition scope is set
+sub place_new_buffer {
+    my ($driving_cell_pin $cell_to_place) = @_;
+    @driving_cells = get_cells -of $driving_cell_pin
+    $driving_cell = $driving_cells[0]
+    @src_pin_coords = get_pin_xy $driving_cell_pin
+    $max_dist = 0
+    foreach $load (get_loads -local $cell_to_place/Y) {
+	$dist = get_dist $driving_cell_pin $load
+	if ($dist > $max_dist) {
+	    $max_dist = $dist
+	    $max_load = $load
+	}
+    }
+    # handle case where it's likely a port and less than 500 um from driver - put new buf adjacent to port
+    if ($max_dist < 450) { place_cell -near $max_load ;
+    } else { 
+	@far_load_coords = get_pin_xy $max_load
+	$new_X_coord = ($src_pin_coords[0] + $far_load_coords[0]) / 2
+	$new_Y_coord = ($src_pin_coords[1] + $far_load_coords[1]) / 2
+	place_cell $cell_to_place $new_X_coord $new_Y_coord
+    }
+}
+    
+    
+
+
+#    @full_fanout_list = get_fanout_pins -from hb/nv_ioif/cfg/ioif2host_pri_rdat_reg_8_/Q -out
+
+sub cleanup_startpoints {
+    my ($root_name $startpoint) = @_;
+    @full_fanout_list = get_fanout_pins -from $startpoint -out -unate
+    lprint "INFO:   processing $startpoint...\n";
+    # rename and resize up to first non-unate cell
+    @list_of_unate_cells = ();
+    @list_of_unate_cells = @full_fanout_list
+    $size_of_list = scalar (@list_of_unate_cells);
+    lprint "INFO:  done with fanout_list of $size_of_list cells\n"; 
+    lprint "\n"; 
+    $index = 0;
+    if ($size_of_list > 0) {
+    foreach $unate_cell (get_cells -of @list_of_unate_cells) {
+        if (($unate_cell =~ /_reg/) || ($unate_cell =~ /HOLD/) || ($unate_cell =~ /host_pri_rdat_/)) { next ;
+	} else {
+	    $ref   = get_ref $unate_cell
+	    if (($ref !~ /BUF/) && ($ref !~ /INV/)) { next ; } # then we shouldn't even be here
+	    $cap   = get_cap $unate_cell/Y
+	    $capf  = sprintf ("%.3f", $cap);
+            $opt_size = get_opt_size ($cap)
+            $orig_size = $ref ; $orig_size =~ s/.*X// ; $orig_size =~ s/TH$//;
+	    lprint "$unate_cell ($ref):  $capf, is $orig_size, recommend $opt_size\n" ;
+	    if (is_th_ref ($ref)) { th_unswap $unate_cell ; }   # don't want any TH on the path we're cleaning
+	    if (($ref =~ /BUF/) && ($opt_size < 2)) { $opt_size = 2; } # there are no BUFX2's
+	    if ((($ref =~ /BUF/) || ($ref =~ /CLK/)) && ($opt_size < 2)) { $opt_size = 2; } # there are no BUFX1's or CLK*X1's
+	    if ($orig_size != $opt_size) { size_cell $unate_cell $opt_size ; }
+	    $old_name = $unate_cell ; $old_name =~ s?[a-z]+[0-9]*/?? ;
+	    $par = $unate_cell ; $par =~ s?/.*?? ; $par =~ tr/a-z/A-Z/;
+	    set_top $par
+	    if ($ref =~ /INV/) { $new_name = ${root_name}_inv${index} ; $index++;
+	    } else             { $new_name = ${root_name}_buf${index} ; $index++;
+	    }
+	    rename_cell $old_name $new_name
+	    rename_the_net $new_name/Y
+	    $net = get_top_net $new_name/Y
+	    $net_length = get_net_length $net
+	    $has_port_load = has_port_loads ($new_name/Y)
+		# blockages in DI are too problematic for a script
+            if (($par !~ /DI/) && (($net_length > 600) || (($net_length > 450) && $has_port_load))) {
+		lprint "            DEBUG:  $net has length $net_length\n";
+		$cap = (get_cap $new_name/Y) / 2
+                $opt_size = get_opt_size ($cap) ;
+		if ($has_port_load) {
+		    mod net (get_top_net $new_name/Y) = BUFX${opt_size} ${root_name}_buf${index} (*) ;
+		    $driver = get_driver ${root_name}_buf${index}/A
+		    rename_the_net $driver
+		} else {
+		    mod pins (get_loads $new_name/Y) = BUFX${opt_size} ${root_name}_buf${index} (*) ;
+		}
+		size_cell $new_name $opt_size ; # potentially downsize driving cell
+	        rename_the_net ${root_name}_buf${index}/Y
+		place_new_buffer ($new_name/Y ${root_name}_buf${index})
+		$index++;
+	    }
+	    set_top nv_top
+	}
+    }
+    }
+
+    set_top nv_top
+    @list_of_post_unate_cells = ();
+    @list_of_post_unate_cells = get_fanout_pins -out -from $startpoint
+    foreach $post_unate_cell_pin (@list_of_post_unate_cells) {
+	@post_unate_cells = get_cells -of $post_unate_cell_pin
+	$post_unate_cell = $post_unate_cells[0]
+	$cap   = get_cap $post_unate_cell/Y
+	$ref   = get_ref $post_unate_cell
+        $opt_size = get_opt_size ($cap)
+        $orig_size = $ref ; $orig_size =~ s/.*X// ; $orig_size =~ s/TH$//;
+	if (is_th_ref ($ref)) { if ($post_unate_cell !~ /HOLD/) { th_unswap $post_unate_cell ; }}   # don't want any TH on the path we're cleaning
+	$par_cell_name = $post_unate_cell ; $par_cell_name =~ s?[a-z]+[0-9]*/?? ;
+	$par = $post_unate_cell ; $par =~ s?/.*?? ; $par =~ tr/a-z/A-Z/;
+	set_top $par
+	
+	if (($opt_size < 5) && ($ref =~ /BUF/)) {
+	    remove_buffer $par_cell_name ; # don't want a bunch of dinky buffers
+	} else {
+	    if (($ref !~ /BUF/) && ($ref !~ /INV/) && ($opt_size > 4)) { $opt_size = 4; } # if combo cell needs > 4, need a buffer
+	    if ((($ref =~ /BUF/) || ($ref =~ /CLK/)) && ($opt_size < 2)) { $opt_size = 2; } # there are no BUFX1's or CLKAND2X1's
+	    if ($orig_size != $opt_size) {
+		size_cell $par_cell_name $opt_size ;
+	    }
+	}
+	set_top nv_top
+    }
+}
+
+
+#if ($clean_pri_rdat) {
+#
+#set_top FE
+#foreach $cell (get_cells clk/ncregs/eco263732_gate_MX2*) {
+#    $ref = get_ref $cell
+#    if ($ref =~ /NVT_NDP_MUX2N_X/) { change_link $cell MXI2X2 -pin_map [S=>S0,ZN=>Y,I0=>A,I1=>B] ; }
+#}
+#
+#set_top nv_top
+#
+#foreach $bit (0..31) {
+#    if ($bit != 15) { # need to treat this special or we get into moxie logic
+#	cleanup_startpoints disp_head_pri_disp_rdat_${bit}                     di/disp/heads/pri/pri_disp_rdat_reg_${bit}_/Q
+#    } else {
+#	cleanup_startpoints disp_head_pri_disp_rdat_${bit}                     di/pri_disp_rdat_${bit}
+#    }
+#    cleanup_startpoints clk_ncadjust_pri_Rdat_${bit}                       di/clk/ncadjust/priv/Rdat_reg_${bit}_/Q
+#}
+
+
+
+#$std_buffer   = CLKBUFX12
+#$med_buffer   = CLKBUFX8
+#$std_inverter = CLKINVX8
+#
+#foreach $bit (0..31) {
+#    $output_port = bus2host_pri_rdat_${bit}
+#    $non_unate_found = 0
+#    $prev_driver = $output_port
+#    while (!$non_unate_found) { \
+#	$driver = get_driver -inst $prev_driver ; \
+#	$ref    = get_ref $driver ; \
+#	if (($ref !~ /INV/) && ($ref !~ /BUF/)) { \
+#	    $non_unate_found = 1 ; \
+#	    $non_unate_driver = $driver ; \
+#	} else { \
+#	    $prev_driver = $driver ; \
+#	} \
+#    }
+#    $par_lc = fh ; $sink_par = mc
+#    $root_name = bus2host_pri_rdat_${bit}
+#    $root_net = get_top_net $non_unate_driver/Y
+#    $dist = get_dist $non_unate_driver $output_port
+#    $num_buffers = (int ($dist/300)) + 1;
+#    remove_buffer_tree -inv_type $std_inverter -port_buf_type $med_buffer $root_net # this does not implicitly add a final buffer
+#    @input_loads = get_loads $root_net
+#
+#    $max_buf_index = $num_buffers - 2
+#    $last_buf_index = $num_buffers - 1
+#    foreach $buf (0..$max_buf_index) { mod port $output_port = $med_buffer ${root_name}_buf${buf} (*) ; }
+#    mod pin ${root_name}_buf0/A = $non_unate_driver/Y
+#    rename_the_net $non_unate_driver/Y bus2host_pri_rdat_${bit}_root
+#
+#    #### add last buffer
+#    mod port $output_port = $med_buffer ${root_name}_${par_lc}2${sink_par}_buf${last_buf_index} (*)
+#
+#    rename_the_net ${root_name}_buf*/Y
+#}
+#}
+	
+
+
+
+
+######################################################################
+
+$std_buffer   = CLKBUFX12
+$med_buffer   = CLKBUFX8
+$std_inverter = CLKINVX8
+
+
+
+sub r_and_r_buffers {
+    my ($root_name $par_traversal $last_buf $pgao) = @_;
+    $par_lc = $last_buf ; $par_lc =~ s?/.*??           ; # lose everything after first slash
+    $par_uc = $par_lc ; $par_uc =~ tr/a-z/A-Z/;
+    $par_buf = $last_buf ; $par_buf =~ s?^[a-z0-9]+/?? ; # lose partition name and slash
+
+    if ($pgao =~ /pgao/) {
+	$std_buffer   = PGAOPV_CKBD12
+	$med_buffer   = PGAOPV_CKBD8
+	$std_inverter = PGAOPV_CKND8
+    } else {
+	$std_buffer   = CKBD8
+	$med_buffer   = CKBD6
+	$std_inverter = CKND8
+    }
+
+    set_top $par_uc
+    @input_ports = get_fanin_pins -dff -to $par_buf     ; $input_port = $input_ports[0]
+    @output_ports = get_fanout_pins -dff -from $par_buf ; $output_port = $output_ports[0]
+    if (scalar (@input_ports != 1))  { lprint "ERROR:  not exactly 1 input port to $last_buf\n" ; last }
+    if (scalar (@output_ports != 1)) { lprint "ERROR:  not exactly 1 output port from $last_buf\n" ; last }
+    $dist = get_dist $input_port $output_port
+    $num_buffers = (int ($dist/300)) + 1;
+    remove_buffer_tree -inv_type $std_inverter -port_buf_type $med_buffer $input_port # this will implicitly add a final buffer
+    @input_loads = get_loads $input_port
+    @local_loads = get_loads -filter */CK|*/clk|*/D|*/SI|/A*|*/B*|*/S* $input_port
+    $max_buf_index = $num_buffers - 2
+    $last_buf_index = $num_buffers - 1
+    foreach $buf (0..$max_buf_index) { mod pins @input_loads = $med_buffer ${root_name}_${par_traversal}_buf${buf} (*) ; }
+    if (scalar (@local_loads) > 0) {
+	if ($num_buffers > 1) {
+	    mod pins @local_loads = $med_buffer ${root_name}_${par_traversal}_localbuf1 (${root_name}_${par_traversal}_buf0/Z)
+	} else {
+	    mod pins @local_loads = $med_buffer ${root_name}_${par_traversal}_localbuf1 ($input_port)
+	}
+    }
+
+    #### make subroutine to rename last buffer
+    @fanout_pins = get_fanout_pins -out -from $input_port
+    @fanout_drv_pins = ();
+    foreach $fanout_pin (@fanout_pins) { if ($fanout_pin =~ /_drv/) { push (@fanout_drv_pins, $fanout_pin); }}
+    
+    if (scalar (@fanout_drv_pins) > 0) {
+	foreach $fanout_drv_pins (@fanout_drv_pins) {
+	    @port_drivers = get_cells -of $fanout_drv_pins
+	    $port_driver = $port_drivers[0] ; # guaranteed to be just one object
+	    $par_output = find_partition_output ($port_driver/Z)
+
+	    set_top nv_top
+	    $top_net = get_top_net $par_lc/$port_driver/Z
+	    @input_pins = get_loads -local $top_net
+	    if (scalar (@input_pins != 1)) { lprint "ERROR:  not exactly 1 input load from $par_lc/$port_driver\n" ; last }
+	    $sink_par = $input_pins[0]; $sink_par =~ s?/.*??
+	    set_top $par_uc
+	    @cell_exists = get_cells -quiet -warn_only ${root_name}_${par_traversal}_${par_lc}2${sink_par}_buf${last_buf_index}
+	    if (scalar (@cell_exists) > 0) { 
+		# handle case of 2 or 3 ports to same partition - not a robust implementation but should be good enough
+		@cell_a_exists = get_cells -quiet -warn_only ${root_name}_${par_traversal}_${par_lc}2${sink_par}_buf${last_buf_index}a
+		if (scalar (@cell_a_exists) > 0) {
+		    rename_cell $port_driver ${root_name}_${par_traversal}_${par_lc}2${sink_par}_buf${last_buf_index}b ;
+		} else {
+		    rename_cell $port_driver ${root_name}_${par_traversal}_${par_lc}2${sink_par}_buf${last_buf_index}a ;
+		}
+	    } else {
+		rename_cell $port_driver ${root_name}_${par_traversal}_${par_lc}2${sink_par}_buf${last_buf_index}
+	    }
+	}
+    }
+    if ($num_buffers > 1) { rename_the_net ${root_name}*/Z ; }
+
+    set_top nv_top
+}
+
+# example:  find_top_output_pin (sb2/fb2fbio_sync0_data01_ptr_2_i0);      # startpoint is a partition input
+sub find_top_output_pin {
+    my ($inst_and_pin $full_pin) = @_;
+    my $startpoint = "unknown" ;
+    $source = $inst_and_pin
+
+    set_top $top_mod
+    @startpoints = get_driver -local $source;
+    if ((scalar (@startpoints)) != 1) {
+        lprint "ERROR:  expected sizeof startpoints to $inst_and_pin to be exactly 1\n";
+    } else {
+        $startpoint = $startpoints[0];
+        if ($full_pin !~ /full/) {
+            $startpoint =~ s?[a-z][a-z]*[0-9]*/?? ; # lose partition prefix and first slash
+	    $startpoint = translate_pin_to_local_pin_name $startpoint
+        }
+    }
+    set_top $top_mod
+    return ($startpoint);
+}
+
+# example:  find_top_input_pin (sb3/fbio0/fbio2fb_rdat_f1_rdat0_3);       # startpoint is a partition output
+sub find_top_input_pin {
+    my ($inst_and_pin $full_pin) = @_;
+    my $endpoint = "unknown" ;
+    $source = $inst_and_pin
+
+    set_top $top_mod
+    @endpoints = get_loads -local $source;
+    if ((scalar (@endpoints)) != 1) {
+        lprint "ERROR:  expected sizeof endpoints to $inst_and_pin to be exactly 1\n";
+    } else {
+        $endpoint = $endpoints[0];
+        if ($full_pin !~ /full/) {
+            $endpoint = translate_pin_to_local_pin_name $endpoint
+        }
+    }
+    set_top $top_mod
+    return ($endpoint);
+}
+
+sub remove_both_ports_and_top_net { #
+    my ($top_level_pin $save_port) = @_;
+    set_top $top_mod = set_top ;
+    $driver    = find_top_output_pin ($top_level_pin full)
+    $load      = find_top_input_pin  ($top_level_pin full) ;  set_top $top_mod
+    $top_net   = get_top_net $top_level_pin
+    $src_par   = translate_pin_to_par_name ($driver) # ; returns par name in uppercase by default
+    $dest_par  = translate_pin_to_par_name ($load)
+    $src_port  = translate_pin_to_port_name ($driver)
+    $dest_port = translate_pin_to_port_name ($load)
+
+    if ($save_port =~ /input/) { # then only remove output and top net as well
+        lprint "INFO:  only removing top net and src port:  $driver\n"
+        set_top $top_mod
+        disconnect_net $top_net $driver
+        set_top $src_par
+        remove_port $src_port
+	set_top $top_mod
+        return (0);
+    }
+
+    lprint "INFO:  removing dest port:  $load\n"
+    set_top $top_mod
+    disconnect_net $top_net $load
+    set_top $dest_par
+    remove_port $dest_port
+
+    if ($save_port !~ /output/) { # then only remove input and top net as well
+    lprint "INFO:  removing src port:  $driver and top net $top_net\n"
+        set_top $top_mod
+        remove_net $top_net
+        set_top $src_par
+        remove_port $src_port
+    }
+    set_top $top_mod
+}
+
+sub remove_feedthru_buf {
+    my ($par $port) = @_;
+    set_top $par
+    @loads = get_loads -inst $port
+    if ((scalar (@loads)) > 0) {
+        if ((scalar (@loads)) != 1) {
+            lprint "WARNING:  $par input port $port has multiple loads - removing them all"
+        }
+        foreach $load (@loads) { remove_cell $load ; }
+    }
+}
+
+sub add_holdfix {
+    my ($pin $holdfix_cell $module $preplace_x $preplace_y) = @_;
+
+    my $placement_provided;
+    if (scalar(@_) < 4) { $placement_provided = 0 ; } else { $placement_provided = 1 ; }
+    $current_top = get_top
+
+    if (length $module > 1) {
+    } else {
+	$local_pin_name = translate_pin_to_local_pin_name ($pin)
+	$pin_par_name   = translate_pin_to_par_name ($pin)
+    }
+
+    # if no holdfix specified, then use a clkbufx2th
+    if (length ($holdfix_cell) < 2) { $holdfix_cell = BUFFD1PO4HVT ; } # default holdfix
+
+
+    # if module argument exists, then use pin name literally
+    if (length $module > 1) {
+        lprint "DEBUG:  add_holdfix is using full pin path\n";
+	set_top $module
+	if ($module =~ /NV/) { # then it's likely a macro
+	    $holdfix_root = ${eco_name}m_HOLDFIX ; # distinguish partition level from top level naming
+	} else {
+	    $holdfix_root = ${eco_name}p_HOLDFIX ; # distinguish partition level from top level naming
+	}
+
+	# if it's an output pin (Y or Q*), then mod all the loads
+	if (($pin =~ /Y$/) || ($pin =~ /Z$/) || ($pin =~ /ZN$/) || ($pin =~ /Q$/) || ($pin =~ /QN$/) || ($pin =~ /Q0$/) || ($pin =~ /Q1$/) || ($pin =~ /q$/)) {
+	    @hold_loads = get_loads $pin
+	} else {
+	    @hold_loads = get_pins $pin
+	}
+	mod pins @hold_loads = $holdfix_cell ${holdfix_root}_${holdfix_index} (*) ;
+	@source_pin_coords = get_pin_xy $pin
+	if ($placement_provided) {
+	    place_cell ${holdfix_root}_${holdfix_index} $preplace_x $preplace_y ;
+	} else {
+	    place_cell ${holdfix_root}_${holdfix_index} $source_pin_coords[0] $source_pin_coords[1] ;
+	}
+    } else {
+        lprint "DEBUG:  add_holdfix is using local pin path ($local_pin_name) in module $pin_par_name\n";
+	set_top $pin_par_name;
+	$holdfix_root = ${eco_name}_HOLDFIX
+	if (($pin =~ /Y$/) || ($pin =~ /Z$/) || ($pin =~ /ZN$/) || ($pin =~ /Q$/) || ($pin =~ /QN$/) || ($pin =~ /Q0$/) || ($pin =~ /Q1$/) || ($pin =~ /q$/)) {
+	    @hold_loads = get_loads $local_pin_name
+	} else {
+	    @hold_loads = get_pins $local_pin_name
+	}
+	mod pins @hold_loads = $holdfix_cell ${holdfix_root}_${holdfix_index} (*) ;
+	@source_pin_coords = get_pin_xy $local_pin_name ;
+	if ($placement_provided) {
+	    place_cell ${holdfix_root}_${holdfix_index} $preplace_x $preplace_y ;
+	} else {
+	    place_cell ${holdfix_root}_${holdfix_index} $source_pin_coords[0] $source_pin_coords[1] ;
+	}
+    }
+
+    rename_the_net ${holdfix_root}_${holdfix_index}/Z
+    $holdfix_index++;
+    set_top $current_top
+}
+
+sub add_tbuf {
+    my ($pin $tbuf_cell $module) = @_;
+    $current_top = get_top
+
+    if (length $module > 1) {
+    } else {
+	$local_pin_name = translate_pin_to_local_pin_name ($pin)
+	$pin_par_name   = translate_pin_to_par_name ($pin)
+    }
+
+    # if no tbuf specified, then use a bufx6th
+    if (length ($tbuf_cell) < 2) { $tbuf_cell = CKBD4HVT ; } # default tbuf
+
+    # if module argument exists, then use pin name literally
+    if (length $module > 1) {
+        #lprint "DEBUG:  add_tbuf is using full pin path\n";
+        set_top $module
+	if ($module =~ /NV/) { # then it's likely a macro
+	    $tbuf_root = ${eco_name}m_TBUF ; # distinguish partition level from top level naming
+	} else {
+	    $tbuf_root = ${eco_name}p_TBUF ; # distinguish partition level from top level naming
+	}
+	if (($pin =~ /Y$/) || ($pin =~ /Z$/) || ($pin =~ /ZN$/) || ($pin =~ /Q$/) || ($pin =~ /QN$/) || ($pin =~ /Q0$/) || ($pin =~ /Q1$/) || ($pin =~ /q$/)) {
+	    @tbuf_loads = get_loads $pin
+	} else {
+	    @tbuf_loads = get_pins $pin
+	}
+        mod pins @tbuf_loads = $tbuf_cell ${tbuf_root}_${tbuf_index} (*)
+    } else {
+        #lprint "DEBUG:  add_tbuf is using local pin path\n";
+        set_top $pin_par_name;
+        $tbuf_root = ${eco_name}_TBUF
+	if (($pin =~ /Y$/) || ($pin =~ /Z$/) || ($pin =~ /ZN$/) || ($pin =~ /Q$/) || ($pin =~ /QN$/) || ($pin =~ /Q0$/) || ($pin =~ /Q1$/) || ($pin =~ /q$/)) {
+	    @tbuf_loads = get_loads $local_pin_name
+	} else {
+	    @tbuf_loads = get_pins $local_pin_name
+	}
+        mod pins @tbuf_loads = $tbuf_cell ${tbuf_root}_${tbuf_index} (*)
+    }
+
+    rename_the_net ${tbuf_root}_${tbuf_index}/Z
+    $tbuf_index++;
+    set_top $current_top
+}
+
+# functions like add_tbuf except it guarantees to put the driver next to the existing driver and doesn't rename the outbound net
+sub add_nbuf {
+    my ($pin $tbuf_cell $module) = @_;
+    $current_top = get_top
+
+    if ((length $module > 1) && ($module !~ /BUF_NAME/)) {
+        lprint "INFO:  add_nbuf proc is using module level path names\n";
+    } else {
+	$local_pin_name = translate_pin_to_local_pin_name ($pin)
+	$pin_par_name   = translate_pin_to_par_name ($pin)
+    }
+
+
+    # if no tbuf specified, then use a bufx6th
+    if (length ($tbuf_cell) < 2) { $tbuf_cell = CKBD4HVT ; } # default tbuf
+
+    # if module argument exists, then use pin name literally
+    if ((length $module > 1) && ($module !~ /BUF_NAME/)) {
+        #lprint "DEBUG:  add_tbuf is using full pin path\n";
+        set_top $module
+	if ($module =~ /NV/) { # then it's likely a macro
+	    $tbuf_root = ${eco_name}m_NBUF ; # distinguish partition level from top level naming
+	} else {
+	    $tbuf_root = ${eco_name}p_NBUF ; # distinguish partition level from top level naming
+	}
+	$net_to_buffer = get_top_net $pin
+	@existing_driver_coords = get_pin_xy $pin
+        mod net $net_to_buffer -xy @existing_driver_coords = $tbuf_cell ${tbuf_root}_${tbuf_index} (*)
+    } else {
+        #lprint "DEBUG:  add_tbuf is using local pin path\n";
+        set_top $pin_par_name;
+        if ($module =~ /BUF_NAME/) {
+           $tbuf_root = $module ; $tbuf_root =~ s/BUF_NAME_//;
+        } else {
+           $tbuf_root = ${eco_name}_NBUF
+        }
+
+	if (($pin =~ /Y$/) || ($pin =~ /Z$/) || ($pin =~ /ZN$/) || ($pin =~ /Q$/) || ($pin =~ /QN$/) || ($pin =~ /Q0$/) || ($pin =~ /Q1$/) || ($pin =~ /q$/)) {
+	    @tbuf_loads = get_loads $local_pin_name
+	} else {
+	    @tbuf_loads = get_pins $local_pin_name
+	}
+	@existing_driver_coords = get_pin_xy $local_pin_name
+	$net_to_buffer = get_top_net $local_pin_name
+        if ($module =~ /BUF_NAME/) {
+	    mod net $net_to_buffer -xy @existing_driver_coords = $tbuf_cell $tbuf_root (*)
+	} else {
+	    mod net $net_to_buffer -xy @existing_driver_coords = $tbuf_cell ${tbuf_root}_${tbuf_index} (*)
+	}
+    }
+    $tbuf_index++;
+    set_top $current_top
+}
+
+sub add_holdfix_xy {
+    my ($holdfix_pin, $holdfix_ref, $x_coord, $y_coord $par) = @_;
+    add_holdfix $holdfix_pin $holdfix_ref $par $x_coord, $y_coord
+    my $holdfix_added
+    if (($holdfix_pin =~ /Z/) || ($holdfix_pin =~ /ZN$/) || ($holdfix_pin =~ /Y$/) || ($holdfix_pin =~ /Q$/) || ($holdfix_pin =~ /QN$/)) {
+	my @loads = get_loads -inst $holdfix_pin ; $holdfix = $loads[0]
+    } else {
+	$holdfix = get_driver $holdfix_pin -inst
+    }
+    place_cell $holdfix $x_coord $y_coord
+}
+
+sub add_tbuf_xy {
+    my ($tbuf_pin, $tbuf_ref, $x_coord, $y_coord) = @_;
+    add_tbuf $tbuf_pin $tbuf_ref $par
+    my $tbuf_added
+    if (($tbuf_pin =~ /Z/) || ($tbuf_pin =~ /ZN$/) || ($tbuf_pin =~ /Y$/) || ($tbuf_pin =~ /Q$/) || ($tbuf_pin =~ /QN$/)) {
+	my @loads = get_loads -inst $tbuf_pin ; $tbuf_added = $loads[0]
+    } else {
+	$tbuf_added = get_driver $tbuf_pin -inst
+    }
+    place_cell $tbuf_added $x_coord $y_coord
+}
+
+# example:  add_skewbuf (u_sctl/my_flop/CP, gpcclk, CKBD2) -> will add a CKBD2 ${eco_name}c_gpcclk_SKEW_LATE_buf${skew_index} cell to CP pin
+sub add_skewbuf {
+    my ($pin $clkroot $skewbuf_cell $module) = @_;
+
+    $current_top = get_top
+    my $driver, $pin, $driver_ref ;
+
+    if (($clkroot =~ /auto/) || (scalar(@_) < 2)) { # determine driving clock name
+	$driver = get_driver $pin
+	if ($driver =~ /gpc2clk/)     { $clkroot = gpc2clk ;
+	} elsif ($driver =~ /gpcclk/) { $clkroot = gpcclk ;
+	} else                        { $clkroot = clk ;
+	}
+    }
+
+    if (length $module > 1) {
+    } else {
+	$local_pin_name = translate_pin_to_local_pin_name ($pin)
+	$pin_par_name   = translate_pin_to_par_name ($pin)
+    }
+
+    # if no skewbuf specified, then use a ckbd1
+    if (length ($skewbuf_cell) < 2) { $skewbuf_cell = CKBD1 ; } # default skewbuf
+
+    # this is for T148 to add the W140 string and it assumes nothing other than svt is in the driver
+    $existing_net = get_top_net $pin
+    @check_if_is_port = get_ports -quiet $existing_net ;
+    if (scalar(@check_if_is_port < 1)) {	# need to add this for cd100 because clock mesh doesn't have a driving pin
+	$driver = get_driver -inst $pin
+	$driver_ref = get_ref $driver
+	if (($driver_ref =~ /W140/) && ($skewbuf_cell !~ /W140/)) { $skewbuf_cell =~ s/$/W140/ ; }
+    } else {
+	lprint "INFO:  check_if_is_port found $existing_net to not be a port\n";
+    }
+
+    # if module argument exists, then use pin name literally
+    if (length $module > 1) {
+        lprint "DEBUG:  add_skewbuf is using full pin path\n";
+	set_top $module
+	if ($module =~ /NV/) { # then it's likely a macro
+	    $skewbuf_root = ${eco_name}m_${clkroot}_SKEW_LATE ; # distinguish partition level from top level naming
+	} else {
+	    $skewbuf_root = ${eco_name}p_${clkroot}_SKEW_LATE ; # distinguish partition level from top level naming
+	}
+
+	# if it's an output pin (Y or Q*), then mod all the loads
+	if (($pin =~ /Y$/) || ($pin =~ /Z$/) || ($pin =~ /ZN$/) || ($pin =~ /Q$/) || ($pin =~ /QN$/) || ($pin =~ /q$/)) {
+	    @skew_loads = get_loads $pin
+	} else {
+	    @skew_loads = get_pins $pin
+	}
+	mod pins @skew_loads = $skewbuf_cell ${skewbuf_root}_${skewbuf_index} (*) ;
+	@source_pin_coords = get_pin_xy $pin
+	place_cell ${skewbuf_root}_${skewbuf_index} $source_pin_coords[0] $source_pin_coords[1] ;
+    } else {
+        lprint "DEBUG:  add_skewbuf is using local pin path ($local_pin_name) in module $pin_par_name\n";
+	set_top $pin_par_name;
+	$skewbuf_root = ${eco_name}_${clkroot}_SKEW_LATE
+	if (($pin =~ /Y$/) || ($pin =~ /Z$/) || ($pin =~ /ZN$/) || ($pin =~ /Q$/) || ($pin =~ /QN$/) || ($pin =~ /q$/)) {
+	    @skew_loads = get_loads $local_pin_name
+	} else {
+	    @skew_loads = get_pins $local_pin_name
+	}
+	mod pins @skew_loads = $skewbuf_cell ${skewbuf_root}_${skewbuf_index} (*) ;
+	@source_pin_coords = get_pin_xy $local_pin_name ;
+	place_cell ${skewbuf_root}_${skewbuf_index} $source_pin_coords[0] $source_pin_coords[1] ;
+    }
+
+    rename_the_net ${skewbuf_root}_${skewbuf_index}/Z
+    $skewbuf_index++ ;
+    set_top $current_top
+}
+
+sub build_20_trimmer {
+    my ($processor_name, $tap_net, $sink_pin, $trim_setting) = @_;
+    $max_tap = 20
+    $max_tap_m1 = $max_tap - 1
+    $max_tap_p1 = $max_tap + 1
+    #$macro_name = $processor_name; $macro_name =~ s/^.*_// ; $macro_name =~ s/^/NV_CLK_/;
+    #set_top $macro_name
+    # build non-programmable trimmer for jtag_clk
+    $common_clk_net = $processor_name/trim_shape/inp
+    create_net $common_clk_net ; mod net $common_clk_net = CKBD10 $processor_name/trim_shape/bi ($tap_net)
+    foreach $mx (0..$max_tap) {
+	create_cell $processor_name/trim_shape/m${mx} CKMUX2D1 ;
+	mod pin $processor_name/trim_shape/m${mx}/S = 1'b0 ; # tie off to 0 for now
+	mod pin $processor_name/trim_shape/m${mx}/I0 = $common_clk_net
+	create_net $processor_name/trim_shape/d${mx}
+	mod net $processor_name/trim_shape/d${mx} = $processor_name/trim_shape/m${mx}/Z
+    }
+    # stitch together daisy chain, connect source net and drive sink pin
+    #mod pin nvclk_roottrim_drv_di/A = CKBD12 nvclk_roottrim_med_buf0 ($processor_name/trim_shape/m0/Z)
+    #rename_the_net nvclk_roottrim_med_buf0/Z
+    mod pin $sink_pin = $processor_name/trim_shape/m0/Z
+    foreach $mx (0..$max_tap_m1) {
+	$input_mux = $mx + 1;
+	mod pin $processor_name/trim_shape/m${mx}/I1 = $processor_name/trim_shape/d${input_mux};
+    }
+    mod pin $processor_name/trim_shape/m${max_tap}/I1 = CKBD2 $processor_name/trim_shape/b${max_tap_p1} ($common_clk_net)
+    rename_the_net $processor_name/trim_shape/b${max_tap_p1}/Z $processor_name/trim_shape/d${max_tap_p1}
+    $max_trim_eq_1 = $trim_setting - 2;
+    foreach $trim (0..$max_trim_eq_1) { mod pin $processor_name/trim_shape/m${trim}/S = 1'b1; }
+    upsize_cell $processor_name/trim_shape/m0 3
+}
+
+
+sub build_32_trimmer {
+    my ($processor_name, $tap_net, $sink_pin, $trim_setting) = @_;
+    $max_tap = 31
+    $max_tap_m1 = $max_tap - 1
+    $max_tap_p1 = $max_tap + 1
+    #$macro_name = $processor_name; $macro_name =~ s/^.*_// ; $macro_name =~ s/^/NV_CLK_/;
+    #set_top $macro_name
+    # build non-programmable trimmer for jtag_clk
+    $common_clk_net = $processor_name/trim_shape/inp
+    create_net $common_clk_net ; mod net $common_clk_net = CKBD12 $processor_name/trim_shape/bi ($tap_net)
+    foreach $mx (0..$max_tap) {
+	create_cell $processor_name/trim_shape/m${mx} CKMUX2D1 ;
+	mod pin $processor_name/trim_shape/m${mx}/S = 1'b0 ; # tie off to 0 for now
+	mod pin $processor_name/trim_shape/m${mx}/I0 = $common_clk_net
+	create_net $processor_name/trim_shape/d${mx}
+	mod net $processor_name/trim_shape/d${mx} = $processor_name/trim_shape/m${mx}/Z
+    }
+    # stitch together daisy chain, connect source net and drive sink pin
+    #mod pin nvclk_roottrim_drv_di/A = CKBD12 nvclk_roottrim_med_buf0 ($processor_name/trim_shape/m0/Z)
+    #rename_the_net nvclk_roottrim_med_buf0/Z
+    mod pin $sink_pin = $processor_name/trim_shape/m0/Z
+    foreach $mx (0..$max_tap_m1) {
+	$input_mux = $mx + 1;
+	mod pin $processor_name/trim_shape/m${mx}/I1 = $processor_name/trim_shape/d${input_mux};
+    }
+    mod pin $processor_name/trim_shape/m${max_tap}/I1 = CKBD2 $processor_name/trim_shape/b${max_tap_p1} ($common_clk_net)
+    rename_the_net $processor_name/trim_shape/b${max_tap_p1}/Z $processor_name/trim_shape/d${max_tap_p1}
+    $max_trim_eq_1 = $trim_setting - 2;
+    foreach $trim (0..$max_trim_eq_1) { mod pin $processor_name/trim_shape/m${trim}/S = 1'b1; }
+    upsize_cell $processor_name/trim_shape/m0 3
+}
+
+
+
+
+# example:  buffer_par_output_port sm2l1c_wr_data_delayed_data_data16[25] CKBD6
+sub buffer_par_output_port {
+    my($port_name, $ref) = @_;
+
+    $root_name = $port_name ; $root_name =~ s/\[/_/ ; $root_name =~ s/\]// ;
+    $prebuf_name = ${root_name}_prebuf
+    $buffer_name = ${root_name}_buf0
+    mod net $port_name = $ref $buffer_name (*)
+    rename_the_net $buffer_name/I $prebuf_name
+}
+
+# example:  buffer_output_port <partition_pin_name> <buffer cell reference> <optional buffer name>
+sub buffer_output_port {
+    my ($output_port, $buffer_type, $buffer_name) = @_;
+    my $par_name = translate_pin_to_par_name $output_port ;
+    my $local_port = translate_pin_to_port_name $output_port ;
+    my $root_name = $local_port ; $root_name =~ s/\[/_/ ; $root_name =~ s?/?_?g ; $root_name =~ s?\]$?? ; # lose partition prefix and replace slashes
+    if (scalar(@_) < 3) { $buffer_name = ${root_name}_buf0 ; } # default name is port_name_buf0
+    if (scalar(@_) < 2) { $buffer_type = BUFFD8 ; }             # default buffer is a bufx8
+    my $current_scope = set_top
+    lprint "DEBUG:  current_scope = $current_scope, par_name = $par_name, buffer_name = $buffer_name\n";
+    set_top $par_name
+    #lprint "DEBUGGY:  mod port $local_port = $buffer_type $buffer_name (*) ;\n";
+    mod port $local_port = $buffer_type $buffer_name (*) ;
+    my $prebuf_net_name = ${local_port}_prebuf ; $prebuf_net_name =~ s/\[/_/ ; $prebuf_net_name =~ s?\]??g ;
+    @net_exists = get_nets -quiet $prebuf_net_name
+#lprint "DEBUG1  looking for driver to buffer_name:  $buffer_name\n";
+    if (!scalar(@net_exists)) {
+        rename_the_net $buffer_name/I $prebuf_net_name
+    } else {
+        rename_the_net $buffer_name/I ${prebuf_net_name}0
+    }
+
+    if (scalar(@_) > 2) { # if specific buffer name given, then maybe rename driving output if not a flop
+lprint "DEBUG2  looking for driver to buffer_name:  $buffer_name\n";
+	$new_buffer_driver_pin = get_driver $buffer_name/I
+	if ($new_buffer_driver !~ /reg/) {
+	    rename_the_net $new_buffer_driver_pin
+	}
+    }
+
+    set_top $current_scope
+}
+
+# example:  buffer_input_port <partition_pin_name> <buffer cell reference> <optional buffer name>
+sub buffer_input_port {
+    my ($input_port, $buffer_type, $buffer_name) = @_;
+    my $par_name = translate_pin_to_par_name $input_port ;
+    my $local_port = translate_pin_to_port_name $input_port ;
+    my $root_name = $local_port ; $root_name =~ s/\[/_/ ; $root_name =~ s?/?_?g ; $root_name =~ s?\]$?? ; # lose partition prefix and replace slashes
+    if (scalar(@_) < 3) { $buffer_name = ${root_name}_buf0 ; } # default name is port_name_buf0
+    if (scalar(@_) < 2) { $buffer_type = BUFFD8 ; }             # default buffer is a bufx8
+    my $current_scope = set_top
+    lprint "DEBUG:  current_scope = $current_scope, par_name = $par_name";
+    set_top $par_name
+    mod pins (get_loads $local_port) = $buffer_type $buffer_name (*) ;
+    rename_the_net $buffer_name/Z
+
+    set_top $current_scope
+}
+
+
+sub buffer_out_and_maybe_input_ports {
+    my ($output_pin, $vt, $force_input_buffer) = @_ ;
+    my $force_input_buffering ;   if ($force_input_buffer =~ /force/)   { $force_input_buffering = 1 ; }   else { $force_input_buffering = 0 ; }
+    my $prevent_input_buffering ; if ($force_input_buffer =~ /prevent/) { $prevent_input_buffering = 1 ; } else { $prevent_input_buffering = 0 ; }
+    my $drv_inst, $load, $max_load_dist, $load_dist ; $max_load_dist = 0 ;
+    lprint "\n";
+    lprint "buffer_out_and_maybe_input_ports (@_)...\n"
+    my @loads = get_loads $output_pin ; $drv_inst = get_driver -inst $output_pin ;
+    foreach $load (@loads) { $load_dist = get_dist $output_pin $load ; if ($load_dist > $max_load_dist) { $max_load_dist = $load_dist ; }}
+    my $drv2port_dist = get_dist $drv_inst $output_pin ;
+    my $cap = get_cap $output_pin ;
+    my $good_size, $scaled_cap ;
+    if      (($vt =~ /PO4/) && ($vt =~ /HVT/)) { $scaled_cap = 0.40 * $cap ;    # PO4HVT
+    } elsif (($vt !~ /PO4/) && ($vt =~ /HVT/)) { $scaled_cap = 0.55 * $cap ;    #    HVT
+    } elsif (($vt =~ /PO4/) && ($vt !~ /HVT/)) { $scaled_cap = 0.60 * $cap ;    #    PO4
+    } elsif (($vt =~ /PO2/) && ($vt !~ /HVT/)) { $scaled_cap = 0.80 * $cap ;    #    PO2
+    } else				     { $scaled_cap = 1.20 * $cap ; $vt = "" ;
+    }
+    if (($cap > 0.070) || ($max_load_dist > 100) || $force_input_buffering) {
+	$good_size = get_opt_size (($scaled_cap * 0.7), 2, 8) ; # reduce the cap because we're adding 2 buffers
+    } else {
+	$good_size = get_opt_size (($scaled_cap * 1.0), 2, 8) ;
+    }
+
+    my $drv_inst_size = get_size $drv_inst ;
+    my $drv_inst_ref = get_ref $drv_inst
+    my $new_buf_ref_type ;
+    if ($drv_inst_ref =~ /PGAO/) { $new_buf_ref_type = PGAOPV_CKB ; } else { $new_buf_ref_type = BUFF ; }
+    if ($drv_inst_ref =~ /PGAO/) { if (($good_size == 3) || ($good_size == 5)) { $good_size++ ; }}
+    buffer_output_port $output_pin ${new_buf_ref_type}D${good_size}${vt} ;
+    if (!is_unate($drv_inst) || ($drv_inst_size < 3)) {
+	my $new_buf = get_driver -inst $output_pin ;
+	my $driving_par = translate_pin_to_par_name ($new_buf) ;
+	my $local_new_buf = translate_pin_to_local_pin_name $new_buf ;
+	    # place new driver near original driver
+	push_top $driving_par ;
+	my $local_drv_pin = get_driver $local_new_buf ;
+	my @local_drv_pin_xy = get_pin_xy $local_drv_pin ;
+	place_cell $local_new_buf @local_drv_pin_xy ;
+	my $local_drv_pin_cap = get_cap $local_drv_pin ;
+	pop_top ;
+	    # downsize original driver
+	my $drv_size = get_size $drv_inst
+	if (($drv_size > 2) && ($local_drv_pin_cap < 0.006)) { downsize_cell $drv_inst 2 ; }
+    }
+	# then buffer both ports
+    if ((($cap > 0.070) || ($max_load_dist > 150) || $force_input_buffering) && !$prevent_input_buffering) {
+	lprint "INFO_3:  adding input buffer because of cap:  $cap and load_dist:  $max_load_dist for $output_pin\n";
+	my @top_load_pins = get_loads -local $output_pin ;
+	my $top_load_pin = $top_load_pins[0] ;
+	my $load_par = translate_pin_to_par_name $top_load_pin ;
+	my @load_pars_lc = get_loads -local -inst $output_pin ;
+	my $load_par_lc = $load_pars_lc[0] ;
+	my $local_load_pin
+	my $local_input_port = translate_pin_to_local_pin_name $top_load_pin ;
+	my $root_name = $local_input_port ; $root_name =~ s/\[/_/ ; $root_name =~ s?/?_?g ; $root_name =~ s?\]$?? ;
+	my @cell_exists = get_cells -quiet $load_par_lc/${root_name}_buf0
+	my @net_exists = get_nets -quiet $load_par_lc/${root_name}_buf0_out
+	if ((scalar(@cell_exists) < 1) && (scalar(@net_exists) < 1)) {
+	    buffer_input_port $top_load_pin ${new_buf_ref_type}D${good_size}${vt} ;
+	    push_top $load_par
+	    @new_bufs = get_loads -inst $local_input_port ;
+	    @local_drv_pin_xy = get_pin_xy $local_input_port ;
+	    place_cell $new_bufs[0] @local_drv_pin_xy ;
+	    pop_top
+	}
+    }
+}
+
+
+
+
+
+
+
+
+# example:
+# selective_skew_late (gr/sipset2/quadpipe1/srb/pixel0/vnorm3/lat0_xfer_outs_reg_2_ AZ_ccl_BUF_nvclk_G0_L9_112, AZ_ccl_BUF_nvclk_G0_L10_112
+
+sub selective_skew_late {
+
+    my ($first_skew_candidate, $skew_buf0, $skew_buf1) = @_;
+    $do_eco = 1;
+    $original_ck_pin_driver = get_driver $first_skew_candidate/CP
+    if ($skew_buf0 =~ /SKEW_LATE/) { 	# SKEW_LATE is already in the name
+	$full_skew_buf0 = $skew_buf0
+	$full_skew_buf1 = $skew_buf1
+    } else {
+	$full_skew_buf0 = ${skew_buf0}_SKEW_LATE_buf0
+	$full_skew_buf1 = ${skew_buf1}_SKEW_LATE_buf0
+    }
+    mod pin $first_skew_candidate/CP = CKBD2 $full_skew_buf0 (*)
+    rename_the_net $full_skew_buf0/Z
+    mod pin $first_skew_candidate/CP = CKBD4 $full_skew_buf1 (*)
+    rename_the_net $full_skew_buf1/Z
+    
+    $level_1_skew_late = $full_skew_buf0/Z
+    $level_2_skew_late = $full_skew_buf1/Z
+    @flop_loads = get_loads -inst $original_ck_pin_driver
+    $min_q_pin_slack = 100
+    foreach $load (@flop_loads) {
+	$load_ref = get_ref $load
+	if ($load_ref =~ /DF/) {
+	    $min_d_pin_slack = 100
+	    $flop = $load;
+	    $q_pin_slack = get_pin_slack -max $flop/Q
+	    $q_pin_slack_f = sprintf "%.3f" $q_pin_slack
+	    @d_pins = get_pins $flop/D*
+	    # this is to handle the case where a flop has D0 and D1 inputs
+	    foreach $dpin_element (@d_pins) {
+		$d_pin_slack = get_pin_slack -max $dpin_element
+		if ($d_pin_slack < $min_d_pin_slack) {
+		    $min_d_pin_slack = $d_pin_slack
+		    $d_pin = $dpin_element
+		}
+	    }
+	    $d_pin_slack = get_pin_slack -max $d_pin ; # this includes $flop
+	    $d_pin_slack_f = sprintf "%.3f" $d_pin_slack
+	    if ($d_pin_slack > 0.010) {
+		lprint "SKIPPING... $flop has D-pin slack $d_pin_slack_f, no need to skew\n";
+		next;
+	    }
+	    if ($q_pin_slack_f < $min_q_pin_slack) {
+		$min_q_pin_slack = $q_pin_slack_f
+	    }
+	    if ($q_pin_slack < 0.080) {
+		lprint "WARNING:  $flop/Q q_pin_slack:  $q_pin_slack_f is too little to permit skewing\n";
+	    } elsif ($q_pin_slack < 0.200) {
+		lprint "INFO:  $flop/Q q_pin_slack:  $q_pin_slack_f only permits 1 level of skewing late\n";
+		if ($do_eco) { mod pin $flop/CP = $level_1_skew_late ; }
+	    } else {
+		lprint "INFO:  $flop/Q q_pin_slack:  $q_pin_slack_f, d_pin_slack:  $d_pin_slack_f\n";
+		if ($do_eco) { mod pin $flop/CP = $level_2_skew_late ; }
+	    }
+	}
+    }
+    lprint "##############  INFO:  min q_pin_slack for $original_ck_pin_driver flops is $min_q_pin_slack\n";
+}
+
+
+
+# example:  lose_parX_parY_parX_zigzag (pa/PRE_FEED_PA__primary__0_gr_sipset1_quadpipe1_scb2sct_pd_277)
+
+sub lose_parX_parY_parX_zigzag {
+    $parY_input_pin = $_[0]; # full hierarchy
+    $parY_input_port = translate_pin_to_port_name $parY_input_pin
+
+    set_top nv_top ;
+    lprint "DEBUG:  parY_input_pin = $parY_input_pin\n";
+    $parX_1st_output_port = translate_pin_to_port_name (get_driver -local $parY_input_pin)
+    $parX_1st_output_pin  =                             get_driver -local $parY_input_pin
+    $parX_1st_output_pin_driver =                       get_driver        $parY_input_pin
+
+    $PARX = translate_pin_to_par_name $parX_1st_output_pin
+    $PARY = translate_pin_to_par_name $parY_input_pin
+    $parX = $PARX ; $parX =~ tr/A-Z/a-z/ ;
+    $parY = $PARY ; $parY =~ tr/A-Z/a-z/ ;
+    set_top $PARX
+    $parX_1st_input_port = find_partition_input $parX_1st_output_port
+    set_top $PARY
+    $parY_output_port = find_partition_output $parY_input_port
+
+    set_top nv_top
+    $parX_output_port = translate_pin_to_port_name (get_driver -local $parY_input_pin)
+    @parY2parX_loads = get_loads -local "$parY/$parY_output_port" ; # guaranteed this is exactly 1 load
+    @parY2parX_load_pins = get_loads "$parY/$parY_output_port" ; # guaranteed this is exactly 1 load
+    $parX_2nd_input_port = translate_pin_to_port_name ($parY2parX_loads[0])
+    set_top $PARX
+    remove_both_ports_and_top_net "$parX/$parX_2nd_input_port" ; # remove parY -> parX ports and top net
+    set_top $PARY ; remove_buffer_tree $parY_input_port
+    set_top nv_top
+    remove_both_ports_and_top_net "$parY/$parY_input_port"     ; # remove parX -> parY ports and top net
+    set_top nv_top ;
+    lprint "making final stitch to be driven by $parX_1st_output_pin_driver\n"
+    mod pins @parY2parX_load_pins = $parX_1st_output_pin_driver
+    lprint "done with it\n"
+}
+
+sub get_cell_of {
+    my $pin = $_[0]
+    if (($pin =~ /1\'b0/) || ($pin =~ /GND/)) {
+	return (LOGIC_0)
+    } elsif (($pin =~ /1\'b1/) || ($pin =~ /VDD/) || ($pin =~ /VAUXC/)) {
+	return (LOGIC_1)
+    } else {
+	my @cells = get_cells -of $pin
+	if (scalar(@cells) != 1) {
+	    my $num_cells = scalar(@cells)
+	    lprint "ERROR:  subroutine get_cell_of expects exactly one pin to correspond to one cell\n"
+	    lprint "        $pin should be associated with 1 cell, not $num_cells\n"
+	    return (1)
+	} else {
+	    return $cells[0]
+	}
+    }
+}
+
+sub get_size {
+    my $cell_name = $_[0] ;
+    my $cell_ref = get_ref $cell_name ;
+    #my $add_one ; if ($cell_ref =~ /LP/) { $add_one = 1 ; } else { $add_one = 0 ; }
+    my $add_one ; if ($cell_ref =~ /P\d/) { $add_one = 1 ; } else { $add_one = 0 ; }
+    my $cell_size = $cell_ref ; $cell_size =~ s/.*[DX]// ; $cell_size =~ s/HVT$// ; $cell_size =~ s/TH$// ; $cell_size =~ s/UHT$// ;
+       $cell_size =~ s/LP.*//; $cell_size =~ s/_B//; $cell_size =~ s/PO\d// ; $cell_size =~ s/LVT// ; $cell_size =~ s/W140// ;
+    if ($add_one) { $cell_size = $cell_size + 1 ; } # just treat LP cells as the next bigger size
+    if ($cell_ref =~ /CLAMP/) { $cell_size = 1 ; }
+    return $cell_size ;
+}
+
+sub is_jt {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/) || ($cell_name =~ /LOGIC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /JT25/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_hs {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/) || ($cell_name =~ /LOGIC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /DF.*HS/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_md {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/) || ($cell_name =~ /LOGIC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /DF.*MD/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_uht {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/) || ($cell_name =~ /LOGIC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /UHT/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_th {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/) || ($cell_name =~ /LOGIC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if (($cell_ref =~ /TH$/) || ($cell_ref =~ /HVT/)) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_po2 {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if (($cell_ref =~ /PO2/) && ($cell_ref !~ /PO2LVT/) && ($cell_ref !~ /PO2HVT/)) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_po4 {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if (($cell_ref =~ /PO4/) && ($cell_ref !~ /PO4LVT/) && ($cell_ref !~ /PO4HVT/)) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_po2hvt {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /PO2HVT/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_po4hvt {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /PO4HVT/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_po4lvt {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /PO4LVT/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_lvt {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /LVT/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+sub is_svt {
+    $cell_name = $_[0] ;
+    my $cell_is_svt = 1 ;
+    if      (is_th($cell_name))  { $cell_is_svt = 0 ;
+    } elsif (is_uht($cell_name)) { $cell_is_svt = 0 ;
+    } elsif (is_po4($cell_name)) { $cell_is_svt = 0 ;
+    } elsif (is_lvt($cell_name)) { $cell_is_svt = 0 ;
+    }
+    return ($cell_is_svt) ;
+}
+
+sub is_pgao {
+    $cell_name = $_[0] ;
+    if (($cell_name =~ /GND/) || ($cell_name =~ /VDD/) || ($cell_name =~ /VAUXC/)) {
+	return (0)
+    }
+    $cell_ref = get_ref $cell_name ;
+    if ($cell_ref =~ /PGAO/) {
+	return (1) ;
+    } else {
+	return (0) ;
+    }
+}
+
+
+
+#--------------
+
+
+
+sub is_unate {
+    my ($cell, $positive) = @_ ;
+
+    my $ref = get_ref $cell
+    my $unate = 0 ;
+    if (scalar(@_) == 1) { # this is the most basic use of the function - is it unate or not
+	if ((($ref =~ /BUF/) || ($ref =~ /CKBD/) || ($ref =~ /INV/) || ($ref =~ /CKND/) || ($ref =~ /DLY/) || ($ref =~ /DEL/)) && ($ref !~ /CKND\d+D/)) {
+	    $unate = 1 ;
+	}
+    } elsif (($positive =~ /\+/) || ($positive =~ /pos/)) {
+	if (($ref =~ /BUF/) || ($ref =~ /CKB/) || ($ref =~ /DLY/) || ($ref =~ /DEL/)) {
+	    $unate = 1 ;
+	}
+    } elsif (($positive =~ /\-/) || ($positive =~ /neg/)) {
+	if ((($ref =~ /INV/) || ($ref =~ /CKND/)) && ($ref !~ /CKND\d+D/)) {
+	    $unate = 1 ;
+	}
+    } elsif (($positive =~ /nodelay/) || ($positive =~ /bufinv/)) {
+	if ((($ref =~ /BUF/) || ($ref =~ /CKB/) || ($ref =~ /INV/) || ($ref =~ /CKND/)) && ($ref !~ /CKND\d+D/)) {
+	    $unate = 1 ;
+	}
+    }
+    return ($unate) ;
+}
+
+# purpose is to identify cell as holdfix either as delay type or naming
+sub is_holdfix {
+    my $cell = $_[0]
+
+    my $ref = get_ref $cell
+    if ($ref =~ /DEL/)            {
+        my $delay_units = $ref ; $delay_units =~ s/D\d.*// ; $delay_units =~ s/.*DEL// ; $delay_units = $delay_units / 25
+        return ($delay_units) ;
+    } elsif ($ref =~ /DLY/)            {
+        my $delay_units = $ref ; $delay_units =~ s/X.*// ; $delay_units =~ s/DLY// ;
+        return ($delay_units) ;
+    } elsif (($ref =~ /CKBD/) || ($ref =~ /BUF/) || ($ref =~ /INV/)) {
+        if (($cell =~ /slh_/) || ($cell =~ /sph_/) || ($cell =~ /hold/) || ($cell =~ /HOLD/)) {
+            return (1) ;
+        } else {
+            return (0) ;
+        }
+    } else {
+        return (0) ;
+    }
+}
+
+
+sub get_cts_depth {
+    my ($clk_pin, $exclude) = @_ ;
+    if (scalar(@_) > 1) { $verbose = 1 ; } else { $verbose = 0 ; }
+    $driver     = get_driver -inst $clk_pin
+    $driver_pin = get_driver       $clk_pin
+    $driver_ref = get_ref $driver
+    $latch_driven = 0
+    $latch_name = NONE
+    $cts_depth = 0
+    while (($driver_ref !~ /NV_CLK_buffer/) && ($cts_depth < 100)) {
+	if ($driver_pin  =~ /ECK/) {
+	    #lprint "YES, $driver is a latch\n"
+	    $latch_driven = 1
+	    $latch_name = $driver
+            #lprint "INFO:  finding driver for $driver/CK\n"
+	    $next_load_pin = $driver/CK
+	} else {
+	    $next_load_pin = $driver/A
+	}
+	$driver     = get_driver -inst $next_load_pin
+	$driver_pin = get_driver       $next_load_pin
+	$driver_ref = get_ref          $driver
+	$cts_depth++
+	#lprint "DEBUG:  cur_driver $driver ($driver_ref)  -> $clk_pin, depth ($cts_depth)\n";
+    }
+    if ($latch_driven) {
+	if ($verbose) { lprint "INFO:  CTS depth of $cts_depth to $clk_pin, latch driver:  $latch_name\n"; }
+    } else {
+	if ($verbose) {
+	    # there are cases where one wants to see the irregular depth flops, an extra arg of a number will not print those
+	    if ($exclude =~ /[0-9]+/) {
+		if ($cts_depth != $exclude) {
+		    lprint "INFO:  CTS depth of $cts_depth to $clk_pin\n";
+		}
+	    } else {
+		lprint "INFO:  CTS depth of $cts_depth to $clk_pin\n";
+	    }
+	}
+    }
+    return $cts_depth
+}
+
+sub check_if_okay_to_remove_buf {
+    my $cell = $_[0]
+    my $ref = get_ref $cell
+    if (($ref =~ /BUF/) && (!is_holdfix ($cell))) {
+	my $driver = get_driver $cell/I
+	my $a_pin_cap = get_cap $cell/I
+	my $y_pin_cap = get_cap $cell/Z
+	if (((($a_pin_cap + $y_pin_cap) < 0.015) && ($y_pin_cap < 0.007)) || \
+	    (($a_pin_cap < 0.095) && ($y_pin_cap < 0.009))) { # make sure cap is okay
+	    my @loads = get_loads ($cell/Z)
+	    my $first_load  = get_cell_of $loads[0]
+	    my $load_par    = translate_pin_to_par_name $first_load
+	    my $driver_par  = translate_pin_to_par_name $driver
+	    my $driver_cell = get_cell_of $driver ;
+	    my $buffer_par  = translate_pin_to_par_name $cell/Z
+	    # check to make sure at least one adjacent cell is in the same partition so we aren't rerouting feedthrus
+	    if ((($driver_par =~ /$buffer_par/) || ($load_par =~ /$buffer_par/)) && is_unate ($driver_cell)) {
+	        lprint "$cell ($ref) has been deemed UNNECESSARY, removing...\n"
+		remove_buffer $cell
+	    } elsif ($cell =~ /HOLD/) {
+	        lprint "$cell ($ref) has been deemed UNNECESSARY, but preserving since it is a holdfix cell...\n"
+	    } elsif (!is_unate($driver_cell)) {
+	        lprint "$cell ($ref) has been deemed UNNECESSARY, but preserving since driver is non-unate...\n"
+	    } else {
+	        lprint "$cell ($ref) has been deemed UNNECESSARY, but preserving since it will remove ports...\n"
+	    }
+	}
+    }
+}
+
+sub remove_holdfixes_from_critical_endpoint {
+
+    my $endpoint = $_[0]
+    $driver = get_driver -inst $endpoint
+    my $holdfixes_removed = 0
+
+    # remove up to 2 hold fix cells (would be better to keep gobbling holdfixes??)
+    if (is_holdfix($driver) && is_unate($driver, positive)) {
+	remove_buffer $driver
+	$holdfixes_removed++ ;
+	$driver = get_driver -inst $endpoint
+	if (is_holdfix($driver) && is_unate($driver, positive)) {
+	    remove_buffer $driver
+	    $holdfixes_removed++ ;
+	    $driver = get_driver -inst $endpoint
+	}
+    }
+    # make sure new driver is not a minimal drive since this is a deep cone of logic
+    if (is_unate ($driver, nodelay)) {
+	$net_cap = get_cap $endpoint
+	$derated_cap = $net_cap * 0.08
+	$good_size = get_opt_size ($derated_cap, 2)
+	$cur_size = get_size $driver
+	if ($good_size > $cur_size) {
+	    upsize_cell $driver $good_size ;
+	}
+    } else {
+	$driver_size = get_size $driver
+	if ($driver_size < 2) {
+	    upsize_cell $driver -up 1 ;
+	}
+    }
+    return ($holdfixes_removed)
+}
+
+sub opt_size_fanin_path_yes_po4 {
+    my ($pin, $scaling_factor, $max_upsize, $dont_add_holdfix) = @_;
+    if (scalar(@_) < 3) { $max_upsize = 12 ; }
+    opt_size_fanin_path_no_th ($pin, $scaling_factor, $max_upsize, $dont_add_holdfix) ;
+
+    lprint "DEBUG:  Starting po4swap of fanin to $pin\n"
+    foreach $fanin_pin (get_fanin_pins -out -to $pin) {
+        if ($fanin_pin =~ /GND/) { lprint "fanin_pin is a GND\n" ; next ; } elsif ($fanin_pin =~ /VDD/) { lprint "fanin pin is a VDD\n" ; next; } # else { lprint "zapp3\n"; }
+        $fanin_pin_net = get_top_net $fanin_pin ; @ports = get_ports -quiet $fanin_pin_net ; if (scalar(@ports) > 0) { next ; }
+        $cell = get_cell_of $fanin_pin ;
+        if (!is_po4($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/) && ($cell !~ /_pad$/) && ($ref !~ /RAM/)) { po4_swap $cell ; }} #  else { lprint "DEBUGGY2:  no swap of $cell\n"; }
+    }
+}
+
+sub opt_size_fanin_path_yes_th {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    if (scalar(@_) < 3) { $max_upsize = 12 ; }
+    my $pin_cell = get_cell_of $pin ;
+    my $pin_orig_ref  = get_ref $pin_cell ;
+    opt_size_fanin_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting th_swap of fanin to $pin\n"
+    foreach $fanin_pin (get_fanin_pins -out -to $pin) {
+        $fanin_pin_net = get_top_net $fanin_pin ; @ports = get_ports -quiet $fanin_pin_net ; if (scalar(@ports) > 0) { next ; } elsif ($fanin_pin_net =~ /GND/) { next ; } elsif ($fanin_pin_net =~ /VDD/) { next; } # ignore port endpoints
+        $cell = get_cell_of $fanin_pin ;
+        if (!is_th($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/) && ($cell !~ /_pad$/) && ($ref !~ /RAM/) && ($ref !~ /DLY/)) { th_swap $cell ; }}
+    }
+    my $pin_cur_ref = get_ref $pin_cell ;
+    if (($pin_orig_ref =~ /DF/) && ($pin_cur_ref !~ /$pin_orig_ref/)) { change_link $pin_cell $pin_orig_ref ; } # this is to handle the case where an hvt endpoint is po4 swapped but never swapped back
+}
+
+sub opt_size_fanin_path_yes_po4hvt {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    if (scalar(@_) < 3) { $max_upsize = 12 ; }
+    my $pin_cell = get_cell_of $pin ;
+    my $pin_orig_ref  = get_ref $pin_cell ;
+    opt_size_fanin_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting th_swap of fanin to $pin\n"
+    foreach $fanin_pin (get_fanin_pins -out -to $pin) {
+        $fanin_pin_net = get_top_net $fanin_pin ; @ports = get_ports -quiet $fanin_pin_net ; if (scalar(@ports) > 0) { next ; } elsif ($fanin_pin_net =~ /GND/) { next ; } elsif ($fanin_pin_net =~ /VDD/) { next; } # ignore port endpoints
+        $cell = get_cell_of $fanin_pin ;
+        if (!is_th($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/) && ($cell !~ /_pad$/) && ($ref !~ /RAM/) && ($ref !~ /DLY/)) { po4hvt_swap $cell ; }}
+    }
+    my $pin_cur_ref = get_ref $pin_cell ;
+    if (($pin_orig_ref =~ /DF/) && ($pin_cur_ref !~ /$pin_orig_ref/)) { change_link $pin_cell $pin_orig_ref ; } # this is to handle the case where an hvt endpoint is po4 swapped but never swapped back
+}
+
+
+
+sub opt_size_fanin_path_yes_uht {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    if (scalar(@_) < 3) { $max_upsize = 12 ; }
+    opt_size_fanin_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting uht_swap of fanin to $pin\n"
+    foreach $fanin_pin (get_fanin_pins -out -to $pin) {
+        $fanin_pin_net = get_top_net $fanin_pin ; @ports = get_ports -quiet $fanin_pin_net ; if (scalar(@ports) > 0) { next ; } elsif ($fanin_pin_net =~ /GND/) { next ; } elsif ($fanin_pin_net =~ /VDD/) { next; } # ignore port endpoints
+        $cell = get_cell_of $fanin_pin ;
+        if (!is_uht($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/) && ($cell !~ /_pad$/) && ($ref !~ /RAM/) && ($ref !~ /DLY/)) { uht_swap $cell ; }}
+    }
+}
+
+sub opt_size_fanin_path_yes_svt {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    if (scalar(@_) < 3) { $max_upsize = 12 ; }
+    opt_size_fanin_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting unswap of fanin to $pin\n"
+    foreach $fanin_pin (get_fanin_pins -out -to $pin) {
+        $fanin_pin_net = get_top_net $fanin_pin ; @ports = get_ports -quiet $fanin_pin_net ; if (scalar(@ports) > 0) { next ; } elsif ($fanin_pin_net =~ /GND/) { next ; } elsif ($fanin_pin_net =~ /VDD/) { next; } # ignore port endpoints
+        $cell = get_cell_of $fanin_pin ;
+        if (is_th($cell) || is_po2($cell) || is_po4($cell) || is_uht($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/) && ($cell !~ /_pad$/) && ($ref !~ /RAM/)) { unswap $cell ; }}
+    }
+}
+
+sub opt_size_fanin_path_no_svt {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    if (scalar(@_) < 3) { $max_upsize = 12 ; }
+    opt_size_fanin_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting unswap of fanin to $pin\n"
+    foreach $fanin_pin (get_fanin_pins -out -to $pin) {
+        $fanin_pin_net = get_top_net $fanin_pin ; @ports = get_ports -quiet $fanin_pin_net ; if (scalar(@ports) > 0) { next ; } elsif ($fanin_pin_net =~ /GND/) { next ; } elsif ($fanin_pin_net =~ /VDD/) { next; } # ignore port endpoints
+        $cell = get_cell_of $fanin_pin ;
+        if (!is_th($cell) && !is_po4($cell) && !is_uht($cell) && !is_lvt($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/) && ($cell !~ /_pad$/) && ($ref !~ /RAM/)) { po4_swap $cell ; }}
+    }
+}
+
+
+
+	# if this function is called directly with 4 args and the last one matches /limit/, then limit most vt swaps
+sub opt_size_fanout_path_no_th {
+    my ($pin, $scaling_factor, $max_upsize, $no_blind_vt_swap) = @_;
+    if ((scalar(@_) > 3) && ($_[3] =~ /limit/)) { $limit_vt_swap = 1 } else { $limit_vt_swap = 0 ; }
+    if ((scalar(@_) > 3) && ($_[3] =~ /include/)) { $include_startpoint_check = 1 } else { $include_startpoint_check = 0 ; }
+    if (scalar(@_) > 1) { $unswap_anyway = 1 ; } else { $scaling_factor = 1.00 ; }
+    if (scalar(@_) < 3) { $max_upsize = 12 ; }
+    my $num_change_links = 0
+    my @fanout_pins = get_fanout_pins -out -from $pin
+    my $holdfix_added ;
+    lprint "\n"; lprint "INFO:  opt_size_fanout_path_no_th (@_)\n"
+    if ($include_startpoint_check) {
+	# unswap source flop if startpoints are 1
+	my @startpoints = get_fanin_pins -dff -to $pin
+	my $startpoint, startpoint_pin, $fanout_pin, $cell ;
+	if (scalar(@startpoints) == 1) {
+	    $startpoint_pin = $startpoints[0]
+	    $startpoint = get_cell_of $startpoint_pin
+	    if (is_th($startpoint)) { th_unswap $startpoint ; $num_change_links++ ; }
+	    if (is_po4($startpoint)) { unswap $startpoint ; $num_change_links++ ; }
+	}
+    }
+    foreach $fanout_pin (@fanout_pins) {
+	$fanout_pin_net = get_top_net $fanout_pin
+	@ports = get_ports -quiet $fanout_pin_net ; if (scalar(@ports) > 0) { next ; } # ignore port endpoints
+	$num_ports = scalar(@ports) ;
+	$cell = get_cell_of $fanout_pin
+	if (($cell =~ /LOGIC/) || ($cell =~ /GND/) || ($cell =~ /VDD/))  { last ; }    # pin is tied off
+	if ($cell =~ /gr_req_macro/)   { next ; }    # In T114, this cell is in the macro which we don't want to touch
+	if ($cell =~ /RECONFIG/) { last ; } # don't follow scan paths
+	if ($cell =~ /decomp/) { last ; } # don't follow scan paths
+	if (($cell =~ /NV_GR_SM_HALFCTL_BLPG/) || ($cell =~ /blpg_macro_/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_GR_SM_MISC_BLPG/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_ISM_MINI/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /u_sml1c_partmacro/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (!is_unate($cell)) { next ; } # ignore non-unate cells - too many special cases to handle
+	if ($cell =~ /OPTHOLD/) { next ; } # ignore holdfix cells
+	@cell_output_pins = get_pins $cell/Z*
+        $cell_output_pin = $cell_output_pins[0]
+
+	$net_cap = get_cap $cell_output_pin
+	if ($net_cap > 0.190) { lprint "WARNING:  exceptionally large cap of $net_cap for $cell_output_pin\n" ; }
+	$scaled_cap = ($net_cap * $scaling_factor)
+        $good_size = get_opt_size ($scaled_cap 1 $max_upsize)
+	$driver_ref = get_ref $cell
+	$cur_size = get_size $cell
+#	lprint "DEBUG:  Checking $fanout_pin ($driver_ref), scaled cap $scaled_cap:\n"
+	# look for case where small buffer has negligible load
+	$cell_ref = get_ref $cell;
+	if ($cell_ref =~ /PGAOP_CLAMP/) { next ; } # these can't be swapped or sized
+        $cell_par = translate_pin_to_par_name $cell_output_pin
+	@cell_loads = get_loads $cell_output_pin
+	$first_load = $cell_loads[0]
+	$load_par = translate_pin_to_par_name $first_load
+	if ((is_th($cell)) && $unswap_anyway) {
+	    if (!$limit_vt_swap) {
+		po4_swap $cell ; $num_change_links++ ;
+	    # unswap endpoint flop
+	    }
+	}
+	elsif (($net_cap > 0.075) && ((get_size($cell) >= 16))) {	# then do nothing and go to the next one
+	     if (is_th($cell)) { th_unswap $cell ; $num_change_links++ ; }            # but do unswap if it is a TH cell
+	     if (is_po4($cell)) { unswap $cell ; $num_change_links++ ; }            # but do unswap if it is a PO4 cell
+	     next ;
+	}
+	# PGAO cells have limited ranges
+	if (($cell_ref =~ /PGAO.*_INV/)                               && ($good_size > 2) && ($good_size < 8)) { $good_size = 8 }
+	if (($cell_ref =~ /PGAO.*_INV/)                               && ($good_size < 2))                     { $good_size = 2 }
+	if (($cell_ref =~ /PGAO.*_CK/)                                && ($good_size < 2))                     { $good_size = 2 }
+	if (($cell_ref =~ /PGAO.*_BUF/)                               && ($good_size < 2))                     { $good_size = 2 }
+	if (($cell_ref =~ /PGAO.*_CKN/)                               && ($good_size > 2))                     { $good_size = 4 } # this is a hack - need change
+	if (($cell_ref =~ /PGAO.*_CKB/)                               && ($good_size == 3))                    { $good_size = 4 }
+	if (($cell_ref =~ /PGAO.*_BUFF/)                              && ($good_size > 2) && ($good_size < 6)) { $good_size = 4 }
+	if (($cell_ref =~ /PGAO.*_BUFF/)                              && ($good_size > 4) && ($good_size < 8)) { $good_size = 8 }
+	if (($cell_ref =~ /PGAOPV_/)                                  && ($good_size > 8) && ($good_size < 12)) { $good_size = 12 }
+
+	if (!is_unate($cell)                                        && ($good_size == 3))                    { $good_size = 4 }
+
+#	if (($load_par =~ /cell_par/) && ($driver_ref =~ /BUF/) && ($net_cap < 0.010)) {
+#	    remove_buffer $cell
+#	    $num_change_links++ ;
+#	    next ;
+	if (is_holdfix($cell)) {
+	    if ($cell_ref =~ /DEL015D1/) {	# these are often used by the tools as buffers when not really needed as holdfixes
+		change_link $cell CKBD${good_size}PO4 ; $cell_ref = CKBD${good_size}PO4 ;
+	    } elsif ($good_size > 1) {
+		if ($cell_ref =~ /PGAOPV/) {
+		    change_link $cell PGAOPV_CKBD${good_size}PO4
+		} else {
+		    change_link $cell CKBD${good_size}PO4
+		}
+		lprint "INFO:  adding buffer to output of $cell ($ref) because it's a holdfix but has a big load\n";
+		if ($cur_size < $good_size) { # only add holdfix cell if the existing cell is getting sized up
+		    @cell_coords = get_pin_xy $cell/I
+		    #add_holdfix $cell/I $driver_ref
+		    $holdfix_added = insert_holdfix_cell_if_legal ($cell/I, $driver_ref, 5);
+		    if ($holdfix_added) { 
+			$new_holdfix = get_driver -inst $cell/I
+			$new_holdfix_size = get_size $new_holdfix ; if ($new_holdfix_size > 1) { downsize_cell $new_holdfix 1 ; }
+			place_cell $new_holdfix @cell_coords
+		    }
+		}
+		$num_change_links++ ;
+	    } elsif (($good_size < 2) && ($cur_size > 1)) {
+		$non_x_ref = get_ref $cell ; $non_x_ref =~ s/BUFF[X]+/BUFF/ ; change_link $cell $non_x_ref ; # can't downsize some BUFX cells
+		downsize_cell $cell 1 ;
+	    } else {
+		lprint "INFO:  skipping $cell ($ref) because it's a holdfix (good size is $good_size #1)\n";
+		next ;
+	    }
+	} else {
+#	    lprint "DEBUG:  We're in main sizing loop for $cell\n"
+	    #if (is_po4($cell)) { unswap $cell ; $num_change_links++ ; }
+	    #if (is_th($cell)) { th_unswap $cell ; $num_change_links++ ; }
+	    if (is_th($cell) && !$limit_vt_swap) { po4_swap $cell ; $num_change_links++ ; }
+	    # lose P cell types
+	    if ($cell_ref =~ /P\d/) {
+		$new_ref = $cell_ref ; $new_ref =~ s/P\d+// ; $new_ref =~ s/BUFF[X]+D/BUFFD/ ;
+		if ($new_ref =~ /D0/) { $new_ref =~ s/D0/D1/ ;
+		} elsif ($new_ref =~ /D1/) { $new_ref =~ s/D1/D2/ ;
+		} elsif ($new_ref =~ /D2/) { $new_ref =~ s/D2/D3/ ;
+		} elsif ($new_ref =~ /D3/) { $new_ref =~ s/D3/D4/ ;
+		} elsif ($new_ref =~ /D4/) { $new_ref =~ s/D4/D5/ ;
+		}
+		lprint "INFO:  Potentially losing LP type $cell ($cell_ref) to $new_ref\n"
+		#lprint "INFO:  Losing LP type $cell ($cell_ref) to $new_ref\n"
+		#change_link $cell $new_ref ;
+		$prospective_new_ref = $new_ref ; $prospective_new_ref =~ s/BUFF[X]+/BUFF/ ;
+	    } else {
+		$prospective_new_ref = get_ref $cell ;
+	    }
+	    # determine max upsize within legal delta
+	    $max_legal_displacement = get_eco_legal_delta
+	    $cur_size = get_size $cell
+	    $expected_ref = $prospective_new_ref ; $expected_ref =~ s/D\d+/D${good_size}/ ; $expected_ref =~ s/BUFF[X]+D/BUFFD/ ;
+	    $local_par = translate_pin_to_par_name $cell/I
+	    $cur_top = set_top
+	    set_top $local_par
+	    $local_cell = translate_pin_to_local_pin_name ($cell)
+	    if ($cur_size < $good_size) {
+		$best_available_ref = find_largest_size_to_legalize ($local_cell, $expected_ref, $max_legal_displacement)
+		$best_size = $best_available_ref ; $best_size =~ s/.*D// ; $best_size =~ s/_B$// ; $best_size =~ s/PO\d// ; $best_size =~ s/UHT// ; $best_size =~ s/LVT// ; $best_size =~ s/HVT// ;
+	    } elsif ($max_upsize < 12) { # disallow downsizing but permit upsizing
+		$best_size = $cur_size
+	    } else {
+		$best_size = $good_size
+	    }
+	    set_top $cur_top
+
+	    if ($max_upsize < 12) { # disallow downsizing but permit upsizing
+#	        lprint "DEBUG:  We're in upsizing_only loop for $cell\n"
+		if ($cur_size < $best_size) {
+		    if ($cell_ref =~ /BUFFX/) {
+			change_link $cell BUFFD${best_size}PO4 ;
+		    } else {
+			size_cell $cell $best_size ; if (!is_lvt($cell) && !$limit_vt_swap) { po4_swap $cell } ;
+		    } 
+		$num_change_links++ ; }
+	    } else { # allow both upsizing and downsizing
+#	        lprint "DEBUG:  We're in up and downsizing loop for $cell\n"
+		if ($cur_size != $best_size) {
+		    if ($cell_ref =~ /BUFFX/) {
+			change_link $cell BUFFD${best_size} ;
+		    } else {
+			size_cell $cell $best_size ;
+		    }
+		    if (($best_size > $cur_size) && !is_po4($cell) && !is_lvt($cell) && !$limit_vt_swap) { po4_swap $cell };
+		    $num_change_links++ ;
+		} else {
+#		    lprint "DEBUG:  No change for $cell since best size $best_size is equal to $cur_size\n"
+		}
+	    }
+	    $new_cell_ref = get_ref $cell
+	    if (($good_size < 2) && 0) {	# DISABLE buffer removal for now
+		lprint "WARNING:  $cell ($new_cell_ref) may be UNNECESSARY\n";
+		check_if_okay_to_remove_buf ($cell)
+	    }
+	}
+    }
+    lprint "SUMMARY:  $pin path has $num_change_links changes\n"
+    return ($num_change_links);
+}
+
+sub opt_size_fanout_path_yes_po4 {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    opt_size_fanout_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting po4swap of fanout from $pin\n"
+    foreach $fanout_pin (get_fanout_pins -out -from $pin) {
+	$fanout_pin_net = get_top_net $fanout_pin ; @ports = get_ports -quiet $fanout_pin_net ; if (scalar(@ports) > 0) { next ; } # ignore port endpoints
+	$cap = get_cap $fanout_pin
+	$cell = get_cell_of $fanout_pin ;
+	if (!is_po4($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP)) { po4_swap $cell ; }}
+	if ($cell =~ /RECONFIG/) { last ; } # don't follow scan paths
+	if ($cell =~ /decomp/) { last ; } # don't follow scan paths
+	if (($cell =~ /NV_GR_SM_HALFCTL_BLPG/) || ($cell =~ /blpg_macro_/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_GR_SM_MISC_BLPG/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_ISM_MINI/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /u_sml1c_partmacro/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+    }
+}
+
+sub opt_size_fanout_path_yes_svt {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    opt_size_fanout_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting svtswap of fanout from $pin\n"
+    foreach $fanout_pin (get_fanout_pins -out -from $pin) {
+	$fanout_pin_net = get_top_net $fanout_pin ; @ports = get_ports -quiet $fanout_pin_net ; if (scalar(@ports) > 0) { next ; } # ignore port endpoints
+	$cell = get_cell_of $fanout_pin ;
+	if (is_po2($cell) || is_po4($cell) || is_th($cell) || is_uht($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/)) { unswap $cell ; }}
+	if ($cell =~ /RECONFIG/) { last ; } # don't follow scan paths
+	if ($cell =~ /decomp/) { last ; } # don't follow scan paths
+	if (($cell =~ /NV_GR_SM_HALFCTL_BLPG/) || ($cell =~ /blpg_macro_/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_GR_SM_MISC_BLPG/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_ISM_MINI/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /u_sml1c_partmacro/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+    }
+}
+
+
+sub opt_size_fanout_path_yes_th {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    opt_size_fanout_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting downswap of fanout from $pin\n"
+    foreach $fanout_pin (get_fanout_pins -out -from $pin) {
+	$fanout_pin_net = get_top_net $fanout_pin ; @ports = get_ports -quiet $fanout_pin_net ; if (scalar(@ports) > 0) { next ; } # ignore port endpoints
+	$cap = get_cap $fanout_pin
+	$cell = get_cell_of $fanout_pin ;
+	lprint "DEBUG4:  $fanout_pin, $cell ($cap)\n";
+	if (!is_th($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/)) { if ($cap > 0.080) { po4_swap $cell ; } else { th_swap $cell ; }}}
+	if ($cell =~ /RECONFIG/) { last ; } # don't follow scan paths
+	if ($cell =~ /decomp/) { last ; } # don't follow scan paths
+	if (($cell =~ /NV_GR_SM_HALFCTL_BLPG/) || ($cell =~ /blpg_macro_/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_GR_SM_MISC_BLPG/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_ISM_MINI/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /u_sml1c_partmacro/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+    }
+}
+
+sub opt_size_fanout_path_yes_po4hvt {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    opt_size_fanout_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting downswap of fanout from $pin\n"
+    foreach $fanout_pin (get_fanout_pins -out -from $pin) {
+	$fanout_pin_net = get_top_net $fanout_pin ; @ports = get_ports -quiet $fanout_pin_net ; if (scalar(@ports) > 0) { next ; } # ignore port endpoints
+	$cap = get_cap $fanout_pin
+	$cell = get_cell_of $fanout_pin ;
+	lprint "DEBUG4:  $fanout_pin, $cell ($cap)\n";
+	if (!is_th($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/)) { if ($cap > 0.080) { po4_swap $cell ; } else { po4hvt_swap $cell ; }}}
+	if ($cell =~ /RECONFIG/) { last ; } # don't follow scan paths
+	if ($cell =~ /decomp/) { last ; } # don't follow scan paths
+	if (($cell =~ /NV_GR_SM_HALFCTL_BLPG/) || ($cell =~ /blpg_macro_/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_GR_SM_MISC_BLPG/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_ISM_MINI/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /u_sml1c_partmacro/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+    }
+}
+
+
+
+sub opt_size_fanout_path_yes_uht {
+    my ($pin, $scaling_factor, $max_upsize) = @_;
+    opt_size_fanout_path_no_th ($pin, $scaling_factor, $max_upsize) ;
+
+    lprint "DEBUG:  Starting downswap of fanout from $pin\n"
+    foreach $fanout_pin (get_fanout_pins -out -from $pin) {
+	$fanout_pin_net = get_top_net $fanout_pin ; @ports = get_ports -quiet $fanout_pin_net ; if (scalar(@ports) > 0) { next ; } # ignore port endpoints
+	$cap = get_cap $fanout_pin
+	$cell = get_cell_of $fanout_pin ;
+	lprint "DEBUG4:  $fanout_pin, $cell ($cap)\n";
+	if (!is_uht($cell)) { $ref = get_ref $cell ; if (($ref !~ /SYNC/) && ($ref !~ /CLAMP/)) { if ($cap > 0.080) { po4_swap $cell ; } else { uht_swap $cell ; }}}
+	if ($cell =~ /RECONFIG/) { last ; } # don't follow scan paths
+	if ($cell =~ /decomp/) { last ; } # don't follow scan paths
+	if (($cell =~ /NV_GR_SM_HALFCTL_BLPG/) || ($cell =~ /blpg_macro_/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_GR_SM_MISC_BLPG/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /NV_ISM_MINI/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+	if (($cell =~ /u_sml1c_partmacro/) || ($cell =~ /U_blpg_master/)) { next ; } # don't follow paths within macros
+    }
+}
+
+
+
+sub opt_size_fanin_path_no_th {
+    #my ($pin, $scaling_factor, $max_upsize, $cell_type) = @_;	3/11/14 - I don't think the cell_type arg is really getting used
+    my ($pin, $scaling_factor, $max_upsize, $no_blind_vt_swap) = @_;
+    if ((scalar(@_) > 3) && ($_[3] =~ /limit/)) { $limit_vt_swap = 1 } else { $limit_vt_swap = 0 ; }
+    if (scalar(@_) > 1) { if ($cell_type !~ /po4/) { $unswap_anyway = 1 } ; } else { $scaling_factor = 1 ; }
+    if (scalar(@_) < 3) { $max_upsize = 12 ; }
+    my $num_change_links = 0
+    lprint "\n"; lprint "INFO:  opt_size_fanin_path_no_th (@_)\n"
+    my $endpoint = get_cell_of $pin
+    # unswap source flop if startpoints are 1
+    my @startpoints = get_fanin_pins -dff -to $pin
+    my $startpoint ;
+    my $holdfix_added ;
+    my $fanin_pin ;
+    if (scalar(@startpoints) == 1) {
+	my $startpoint_pin = $startpoints[0] ;
+	my $startpoint = get_cell_of $startpoint_pin ;
+	if (($startpoint_pin !~ /GND/) && ($startpoint_pin !~ /VDD/) && is_th($startpoint) && !$limit_vt_swap) { po4_swap $startpoint ; $num_change_links++ ; }
+    }
+    if (is_th($endpoint) && !$limit_vt_swap) { po4_swap $endpoint ; $num_change_links++ ; }
+    my @fanin_pins = get_fanin_pins -out -to $pin
+    foreach $fanin_pin (@fanin_pins) {
+	if (($fanin_pin =~ /LOGIC/) || ($fanin_pin =~ /GND/) || ($fanin_pin =~ /VDD/))  { next ; }    # pin is tied off
+	$cell = get_cell_of ($fanin_pin)
+	$cell_ref1 = get_ref $cell ; if ($cell_ref1 =~ /DELAYSTRUCT/) { next ; } # smmmio hack for gm204-SM 11/13/13
+	if ($cell =~ /gr_req_macro/)   { next ; }    # In T114, this cell is in the macro which we don't want to touch
+	if (($cell =~ /LOGIC/) || ($cell =~ /GND/) || ($cell =~ /VDD/))  { last ; }    # pin is tied off
+	if (!(is_unate($cell))) { last ; }  # don't follow past non-unate gate to avoid host enable, test enable, etc
+	if (is_unate($cell, "pos")) { $cell_output_pin = "$cell/Z" ; } else { $cell_output_pin = "$cell/ZN" ; }
+	$net_cap = get_cap $cell_output_pin
+	if ($net_cap > 0.190) { lprint "WARNING:  exceptionally large cap of $net_cap for $cell_output_pin\n" ; }
+	$scaled_cap = ($net_cap * $scaling_factor)
+	lprint "DEBUG:  scaled cap:  $scaled_cap, net_cap:  $net_cap ($fanin_pin)\n"
+	#if (is_holdfix($cell)) { $good_size = get_opt_size ($scaled_cap 1 $max_upsize) ; } else { $good_size = get_opt_size ($scaled_cap 2 $max_upsize) ; } # don't force an upsize on holdfixes
+	$good_size = get_opt_size ($scaled_cap 1 $max_upsize)
+	lprint "DEBUG:  good_size:  $good_size   ($cell)\n"
+	$driver_ref = get_ref $cell
+	$cur_size = get_size $cell
+	# look for case where small buffer has negligible load
+	$cell_ref = get_ref $cell;
+        $cell_par = translate_pin_to_par_name $cell_output_pin
+	@cell_loads = get_loads $cell_output_pin
+	# DELETE # $first_load = $cell_loads[0]
+	# DELETE # $load_par = translate_pin_to_par_name $first_load
+	$load_par = "none"; # this is used to identify "worthless buffers" but sometimes, they actually are helpful so this is no longer needed
+	if ((is_th($cell)) && $unswap_anyway && !$limit_vt_swap) {
+	    po4_swap $cell ; $num_change_links++ ;
+	    # unswap endpoint flop
+	}
+	elsif (($net_cap > 0.075) && ((get_size($cell) >= 16))) {	# then do nothing and go to the next one
+	     if (is_th($cell) && !$limit_vt_swap) { po4_swap $cell ; $num_change_links++ ; }            # but do unswap if it is a TH cell
+	     next ;
+	}
+	# PGAO cells have limited ranges
+lprint "DEBUG1:  good_size_a:  $good_size ($cell_ref)\n";
+	if (($cell_ref =~ /PGAOPV_INV/)                               && ($good_size > 2) && ($good_size < 8)) { $good_size = 8 }
+	if (($cell_ref =~ /PGAOPV_INV/)                               && ($good_size < 2))                     { $good_size = 2 }
+	if (($cell_ref =~ /PGAOPV_CK/)                                && ($good_size < 2))                     { $good_size = 2 }
+	if (($cell_ref =~ /PGAOPV_BUF/)                               && ($good_size < 2))                     { $good_size = 2 }
+	if (($cell_ref =~ /PGAOPV_CKN/)                               && ($good_size > 2))                     { $good_size = 4 } # this is a hack - need change
+	if (($cell_ref =~ /PGAOPV_CKB/)                               && ($good_size == 3))                    { $good_size = 4 }
+	if (($cell_ref =~ /PGAOPV_BUFF/)                              && ($good_size > 2) && ($good_size < 6)) { $good_size = 4 }
+	if (($cell_ref =~ /PGAOPV_BUFF/)                              && ($good_size > 4) && ($good_size < 8)) { $good_size = 8 }
+	if (($cell_ref =~ /PGAOPV_/)                                  && ($good_size > 8) && ($good_size < 12)) { $good_size = 12 }
+
+	if (!is_unate($cell)                                        && ($good_size == 3))                    { $good_size = 4 }
+lprint "DEBUG1:  good_size_b:  $good_size\n";
+
+	lprint "DEBUG:  opt_size_fanin  $cell, cur_size:  $cur_size, good_size:  $good_size\n"
+	if (($load_par =~ /cell_par/) && ($driver_ref =~ /BUF/) && ($net_cap < 0.010) && 0) { # disable this by making it never evaluate to true
+	    remove_buffer $cell
+	    $num_change_links++ ;
+	    next ;
+ 	} elsif ($cell_ref =~ /SMT_/) {
+ 	    lprint "INFO:  skipping $cell ($cell_ref) because it's a SMT cell and we don't support their resizing\n";
+ 	    next ;
+# 	} elsif ($cell_ref =~ /PGAOP_/) {
+# 	    lprint "INFO:  skipping $cell ($cell_ref) because it's a PGAO cell and we don't support their resizing\n";
+# 	    next ;
+	} elsif (is_holdfix($cell)) {
+	    if ($cell_ref =~ /DEL015D1/) {	# these are often used by the tools as buffers when not really needed as holdfixes
+		change_link $cell CKBD${good_size}PO4 ; $cell_ref = CKBD${good_size}PO4 ;
+	    } elsif ($good_size > 1) {
+		
+		if ($cell_ref =~ /PGAOPV/) {
+		    change_link $cell PGAOPV_CKBD${good_size}PO4
+		} else {
+		    change_link $cell CKBD${good_size}PO4
+		}
+		lprint "INFO:  adding buffer to output of $cell ($ref) because it's a holdfix but has a big load\n";
+		if ($cur_size < $good_size) { # only add holdfix cell if the existing cell is getting sized up
+		    @cell_coords = get_pin_xy $cell/I
+		    #add_holdfix $cell/I $driver_ref
+		    $holdfix_added = insert_holdfix_cell_if_legal ($cell/I, $driver_ref, 5);
+		    if ($holdfix_added) { 
+			$new_holdfix = get_driver -inst $cell/I
+			$new_holdfix_size = get_size $new_holdfix ; if ($new_holdfix_size > 1) { downsize_cell $new_holdfix 1 ; }
+			place_cell $new_holdfix @cell_coords
+		    }
+	 	}
+		$num_change_links++ ;
+	    } elsif (($good_size < 2) && ($cur_size > 1)) {
+		$non_x_ref = get_ref $cell ; $non_x_ref =~ s/BUFF[X]+/BUFF/ ; change_link $cell $non_x_ref ; # can't downsize some BUFX cells
+		downsize_cell $cell 1 ;
+	    } else {
+		lprint "INFO:  skipping $cell ($ref) because it's a holdfix (good size is $good_size #2)\n";
+		next ;
+	    }
+	} else {
+	    if (is_th($cell) && !$limit_vt_swap) { po4_swap $cell ; $num_change_links++ ; }
+	    # lose LP cell types
+	    if ($cell_ref =~ /P\d/) {
+		$new_ref = $cell_ref ; $new_ref =~ s/P\d+//
+		if ($new_ref =~ /D7/) { $new_ref =~ s/D7/D8/ ; }
+		if ($new_ref =~ /D5/) { $new_ref =~ s/D5/D6/ ; }
+		if ($new_ref =~ /D0/) { $new_ref =~ s/D0/D1/ ; }
+		lprint "INFO:  Potentially losing LP type $cell ($cell_ref) to $new_ref\n"
+		#lprint "INFO:  Losing LP type $cell ($cell_ref) to $new_ref\n"
+		#change_link $cell $new_ref ;
+		$prospective_new_ref = $new_ref ; $prospective_new_ref =~ s/BUFF[X]+/BUFF/ ;
+	    } else {
+		$prospective_new_ref = get_ref $cell ;
+	    }
+	    # determine max upsize within legal delta
+	    $max_legal_displacement = get_eco_legal_delta
+	    $max_legal_displacement = $max_legal_displacement - 5
+	    $cur_size = get_size $cell
+	    #$expected_ref = get_ref $cell ; $expected_ref =~ s/D\d+/D${good_size}/ ; $expected_ref =~ s/BUFF[X]+/BUFF/ ;
+	    $expected_ref = $prospective_new_ref ; $expected_ref =~ s/D\d+/D${good_size}/ ; $expected_ref =~ s/BUFF[X]+/BUFF/ ;
+	    $local_par = translate_pin_to_par_name $cell/I
+	    $cur_top = set_top
+	    set_top $local_par
+	    $local_cell = translate_pin_to_local_pin_name ($cell)
+	    if ($cur_size < $good_size) {  # the best size is the biggest one that will fit, up to good_size
+		$best_available_ref = find_largest_size_to_legalize ($local_cell, $expected_ref, $max_legal_displacement)
+		$best_size = $best_available_ref ; $best_size =~ s/.*D// ;  $best_size =~ s/[A-Z].*// ;$best_size =~ s/_B$// ;
+	    } elsif ($max_upsize < 12) { # disallow downsizing but permit upsizing
+		$best_size = $cur_size
+	    } else { # allow both upsizing and downsizing
+		$best_size = $good_size
+	    }
+	    set_top $cur_top
+
+	    $cell_ref = get_ref $cell ;
+	    if ($max_upsize < 12) { # disallow downsizing but permit upsizing
+		if ($cur_size < $best_size) { if ($cell_ref =~ /BUFFX/) { $non_bufx_ref = $cell_ref ; $non_bufx_ref =~ s/BUFF[X]+/BUFF/ ; change_link $cell $non_bufx_ref ; } size_cell $cell $best_size ; $num_change_links++ ; }
+	    } else { # allow both upsizing and downsizing
+		if ($cur_size != $best_size) { if ($cell_ref =~ /BUFFX/) { $non_bufx_ref = $cell_ref ; $non_bufx_ref =~ s/BUFF[X]+/BUFF/ ; change_link $cell $non_bufx_ref ; } size_cell $cell $best_size ; $num_change_links++ ; }
+		#if ($cur_size != $best_size) { size_cell $cell $best_size ; $num_change_links++ ; }
+	    }
+	    $new_cell_ref = get_ref $cell
+	    if (($good_size < 2) && 0) {  # DISABLE buffer removal
+		lprint "WARNING:  $cell ($new_cell_ref) may be UNNECESSARY\n";
+		check_if_okay_to_remove_buf ($cell)
+	    }
+	}
+    }
+    lprint "SUMMARY:  $pin path has $num_change_links changes\n"
+    return ($num_change_links)
+}
+
+
+# note:  base unit is DEL025 :  12 ps bc/ 40 ps wc (40nm)
+# note:  base unit is DEL010 :  12 ps bc/ 40 ps wc
+
+# 28nm table
+#              fast hvt		typ po4		typ hvt
+#
+# BUFFD0P75	0.012		0.032		0.043
+# DEL010D1	0.014		0.026		0.033
+# DEL020D1	0.025		0.052		0.066
+# DEL030D1	0.038		0.071		0.093
+#
+# DEL040D1	0.049		0.092		0.120
+# DEL060D1	0.079		0.145		0.194
+# DEL100D1	0.122		0.255		0.347
+# DEL200D1	     		0.508		0.688
+
+
+sub put_holdfix_on_d_pin_if_slack {
+    my $pin = $_[0];
+    #push_timing_corner sv_slow_max
+    my $max_slack = get_pin_slack -max $pin
+    #pop_timing_corner
+    #push_timing_corner sv_fast_min
+    my $min_slack = get_pin_slack -min $pin
+    #pop_timing_corner
+    my $max_delay_unit_allowed = int (($max_slack - .060) / 0.050) ; # 60 ps margin, 50ps is slack through DEL010HVT wc
+    my $min_delay_required = abs (int ($min_slack / 0.012)) ; # delay through DEL010HVT
+    if ($min_delay_required > 9) { $min_delay_required = 9 ; }  # maximum of one big delay cell (DEL100HVT)
+    if ($max_delay_unit_allowed < $min_delay_required) {
+	$adj_min_delay_required = $max_delay_unit_allowed ;
+    } else {
+	$adj_min_delay_required = $min_delay_required ;
+    }
+    if ($min_delay_required < 1) { $min_delay_required = 1 ; } # assume at least one delay unit is needed or it wouldn't be here
+    if ($max_delay_unit_allowed < 1) {
+        lprint "WARNING:  skipping $pin with max_slack ($max_slack) and min slack ($min_slack)\n"
+    } else {
+        lprint "INFO:  working on $pin with max_slack ($max_slack) and min slack ($min_slack)\n"
+	if ($min_delay_required == 5) { $min_delay_required = 4 ; } # DEL050 doesn't exist
+	if ($min_delay_required == 7) { $min_delay_required = 6 ; } # DEL070 doesn't exist
+	if ($min_delay_required == 8) { $min_delay_required = 6 ; } # DEL080 doesn't exist
+	if ($min_delay_required == 9) { $min_delay_required = 6 ; } # DEL090 doesn't exist
+	if ($min_delay_required < 10) {
+	   $delay_units = sprintf ("0%d", $min_delay_required * 10)
+	} else {
+	   $delay_units = sprintf ("%d", $min_delay_required * 10)
+	}
+	if ($min_slack > -0.010) {
+	    $delay_ref = BUFFD1HVT
+	} else {
+	    $delay_ref = DEL${delay_units}D1HVT
+	}
+	# if it's a ram, stack ckbd* cells, otherwise, use a single cell
+	$d_pin_cell = get_cell_of $pin
+	$d_pin_ref = get_ref $d_pin_cell
+	if ($d_pin_ref =~ /RAM/) {
+	    while ($min_delay_required > 0) {
+		add_holdfix $pin CKBD2 $par
+		$min_delay_required--;
+	    }
+	} else {
+	    add_holdfix $pin $delay_ref $par
+	}
+    }
+}
+
+# sub put_holdfix_on_d_pin_if_slack {
+#     my $pin = $_[0];
+#     my $max_slack = get_pin_slack -max $pin
+#     my $min_slack = get_pin_slack -min $pin
+#     my $max_delay_unit_allowed = int (($max_slack + .060) / 0.125)
+#     my $min_delay_required = abs (int ($min_slack / 0.008))
+#     my $scan_holdfix_seen = 0 ;
+#     if ($min_delay_required > 4) { $min_delay_required = 4 ; }  # maximum of one big delay cell
+#     if ($max_delay_unit_allowed > $min_delay_required) {
+# 	# look to see if existing scan holdfix is there since that means it must be shallow in the network
+# 	$driver = get_driver $pin
+# 	@driver_loads = get_loads -inst $driver
+# 	foreach $load (@driver_loads) {
+# 	    if ($load =~ /SCAN_HOLDFIX/) {
+# 		$scan_holdfix_seen = $load ;
+# 	    }
+# 	}
+# 	if ($scan_holdfix_seen) {
+# 	    mod pin $pin = $scan_holdfix_seen/Y
+#         } elsif ($min_delay_required == 0) {
+#             add_holdfix $pin CKBD1HVT $par
+#         } else {
+#             $delay_units = $min_delay_required
+#             add_holdfix $pin DEL${min_delay_required}D1HVT $par
+#         }
+#     } else {
+#         lprint "WARNING:  skipping $pin with max_slack ($max_slack) and min slack ($min_slack)\n"
+#     }
+# }
+
+
+
+
+
+
+
+sub get_delay_units {
+   my $cell_ref = $_[0] ;
+   if (($cell_ref =~ /BUF/) || ($cell_ref =~ /CKB/)) {
+	return (1) ;
+   } elsif ($cell_ref =~ /DEL/) {
+	$delay_units = $cell_ref
+	$delay_units =~ s/D.*// ; $delay_units =~ s/DEL// ;
+	$delay_units = $delay_units / 25
+	return ($delay_units) ;
+   } else {
+	return (0) ;
+   }
+}
+
+# intended for flop to flop paths 
+sub manage_endpoint_delay {
+    my ($pin, $target_delay) = @_ ;
+    $pin_driver = get_driver $pin
+    if ($pin_driver =~ /1\'b[01]/) { lprint "WARNING:  skipping path fixing to $pin since it's driven by a constant\n"; return (-1) ; }
+    my $endpoint_pin_delay = mrt -to $pin -rtn_delay
+    lprint "INFO:  optimizing path to $pin for $target_delay, current delay:  $endpoint_pin_delay\n"
+    @endpoint_fanin_pins = get_fanin_pins -dff -to $pin
+    $dist = get_dist $endpoint_fanin_pins[0] $pin
+    if ($dist > 1000) {
+	opt_size_fanin_path_no_th ($pin, 0.70, 8) ; # detune bus somewhat
+    } else {
+	opt_size_fanin_path_yes_th ($pin, 0.60) ; # detune bus substantially
+    }
+    $endpoint_driver = get_driver -inst $pin
+    $endpoint_driver_ref = get_ref $endpoint_driver
+    $endpoint_pin_delay = mrt -to $pin -rtn_delay ; # update delay after resizing
+    $pin_delta = $target_delay - $endpoint_pin_delay
+
+    # note, for tsmc, delay unit is 025, (40 ps wc), multiply by 1.3 for HVT
+	# already too much delay
+    if      ($pin_delta < -0.100) {
+	if ($endpoint_driver_ref =~ /DEL/) {
+	    $driver_delay_units = get_delay_units ($endpoint_driver_ref)
+	    $delay_needed = (int ($pin_delta / 0.100))
+	    $desired_delay = $driver_delay_units + $delay_needed
+	    $driver_size = get_size $endpoint_driver
+	    if ($desired_delay < 1) {
+		remove_buffer $endpoint_driver
+		lprint "MANAGE_DELAY_DLY_REMOVE:  remove_buffer $endpoint_driver ($endpoint_driver_ref)\n"
+	    } else {
+		change_link $endpoint_driver DLY${desired_delay}X1TH 
+		lprint "MANAGE_DELAY_DLY_REDUCE:  change_link $endpoint_driver ($endpoint_driver_ref) to DLY${desired_delay}X1TH\n"
+	    }
+	}
+	
+	# not enough delay
+    } elsif ($pin_delta > 0.050) {
+	$delay_needed = (int ($pin_delta / 0.100)) + 1
+	if ($delay_needed > 4) { $delay_needed = 4 ; }
+	lprint "ENDPOINT:      $pin:  pin_delay:  $pin_delay, will add DLY${delay_needed}X1TH to meet $target_delay ps target\n" ;
+	if ((is_holdfix ($endpoint_driver)) > 0) {
+	    $delay_cell_name = $endpoint_driver
+	} else {
+	    $delay_cell_name = the_cell_who_shall_not_be_named
+	}
+	@existing_delay_cells = get_cells -warn_only -quiet $delay_cell_name
+	if (scalar(@existing_delay_cells > 0)) {
+	    $existing_delay_cell_ref = get_ref $delay_cell_name
+	    $existing_dly_units = get_delay_units ($existing_delay_cell_ref)
+	    $combined_delay_needed = $existing_dly_units + $delay_needed
+	    if ($combined_delay_needed < 5) { # then one delay cell will work
+		change_link $delay_cell_name DLY${combined_delay_needed}X1TH
+	    } else {
+		add_holdfix $pin DLY${delay_needed}X1TH
+	    }
+	} else {
+	    add_holdfix $pin DLY${delay_needed}X1TH
+	}
+    }
+}
+
+
+sub opt_size_fanin_path_desired_delay {
+    my ($endpoint_pin, $desired_delay) = @_ ;
+    lprint "\n";
+    lprint "INFO:  starting opt_size_fanin_path_delay ($endpoint_pin, desired_delay)...\n";
+    my $scaling_factor = 0.30 ;
+
+    opt_size_fanin_path_yes_po4hvt ($endpoint_pin, $scaling_factor, 12) ;
+    my $delay = mrt -to $endpoint_pin -rtn_delay ;
+
+    while (($delay > $desired_delay) && ($scaling_factor < 1.7)) {
+	lprint "OPTIMIZING $par_pin (delay :  $delay), scaling_factor:  $scaling_factor\n";
+	$scaling_factor = $scaling_factor + 0.10 ;
+	if (scaling_factor < 0.60) {
+	    opt_size_fanin_path_yes_th ($endpoint_pin, $scaling_factor, 12) ;
+	} elsif (scaling_factor < 1.50) {
+	    opt_size_fanin_path_yes_po4 ($endpoint_pin, $scaling_factor, 12) ;
+	} else {
+	    opt_size_fanin_path_yes_svt ($endpoint_pin, $scaling_factor, 12) ;
+	}
+	$delay = mrt -to $endpoint_pin -rtn_delay ;
+    }
+    if ($delay > $desired_delay) {
+	$scaling_factor = 2.0 ;
+	lprint "OPTIMIZING_max $par_pin (delay :  $delay), scaling_factor:  $scaling_factor\n";
+	opt_size_fanin_path_yes_svt ($endpoint_pin, $scaling_factor, 12) ;
+    }
+    return ($delay) ;
+}
+
+
+sub consolidate_hold_fixes {
+    my $endpoint = $_[0];
+    lprint "INFO:  Consolidating holdfixes for $endpoint\n"
+    $endpoint_par = translate_pin_to_par_name $endpoint
+    @fanin_pins = get_fanin_pins -out -to $endpoint
+    @list_of_holdfixes = ()
+    $total_delay = 0
+    $enable_holdfix_collecting = 1;
+    foreach $fanin_pin (@fanin_pins) {
+	$cell = get_cell_of $fanin_pin
+	$holdfix_par = translate_pin_to_par_name $fanin_pin
+	if ($endpoint_par !~ $holdfix_par) { $enable_holdfix_collecting = 0 ; } # don't go across partition boundaries
+	if (is_holdfix($cell) && $enable_holdfix_collecting) {
+	    $cell_ref = get_ref $cell
+	    $dly_units = get_delay_units $cell_ref
+	    if (is_th ($cell)) {
+		$total_delay = $total_delay + (2 * $dly_units)
+	    } else {
+		$total_delay = $total_delay + (1 * $dly_units)
+	    }
+	    push (@list_of_holdfixes, $cell)
+	} else {
+	    $enable_holdfix_collecting = 0 ; # don't collect any more delay cells if they aren't contiguous in the endpoint
+	}
+    }
+    if (scalar(@list_of_holdfixes) < 2) {
+	lprint "INFO:  less than 2 holdfixes to process for $endpoint, skipping...\n";
+	return (0) ;
+    }
+    $delay_needed = $total_delay / 2
+    if ($delay_needed > 4) {
+	$delay_needed = int (0.75 * $delay_needed)
+	lprint "INFO:  delay needed is greater than 4, scaling by 75% to avoid excessive delay\n"
+    }
+    $delay_needed = ceiling ($delay_needed)
+    lprint "INFO:  $endpoint needs a DLY${delay_needed}X1TH\n"
+    foreach $holdfix (@list_of_holdfixes) {
+	$holdfix_ref = get_ref $holdfix
+	if      ($delay_needed > 3) {
+	    $current_delay = 4
+	    if ($holdfix_ref !~ /DLY4X1TH/) {
+		lprint "CONSOLIDATE DEBUG:  changing $holdfix to DLY4X1TH\n";
+		change_link $holdfix DLY4X1TH ;
+	    }
+	} elsif ($delay_needed > 0) {
+	    $current_delay = $delay_needed
+	    if ($holdfix_ref !~ /DLY${current_delay}X1TH/) {
+		lprint "CONSOLIDATE DEBUG:  changing $holdfix to DLY${current_delay}X1TH\n";
+		change_link $holdfix DLY${current_delay}X1TH ;
+	    }
+	} else {
+	    lprint "CONSOLIDATE DEBUG:  removing $holdfix\n";
+	    remove_buffer $holdfix
+	}
+	if ($delay_needed > 0) {
+	    $delay_needed = $delay_needed - $current_delay
+	}
+    }
+}
+
+
+sub put_holdfix_on_startpoint {
+  my ($bad_endpoint, $holdfix_ref) = @_;
+  if (scalar (@_) < 2) { $holdfix_ref = CLKBUFX2TH ; }
+    @startpoints = get_fanin_pins -dff -to $bad_endpoint
+    if (scalar(@startpoints) > 1) { lprint "ERROR:  this proc expects only 1 startpoint and $endpoint has more\n";
+    } else {
+	$startpoint_pin = $startpoints[0]
+	$par_prefix = $startpoint_pin ; $par_prefix =~ s?/.*??
+	lprint "INFO:  Adding holdfix on Q pin of $startpoint_pin ->\n";
+	lprint "                                                   $bad_endpoint\n";
+	$q_net = get_top_net $startpoint_pin
+	$top_q_net = "$par_prefix/$q_net"
+	lprint "DEBUG:  checking for existence of pin $top_q_net\n";
+	@output_ports = get_pins -quiet -warn_only $top_q_net
+	if (scalar (@output_ports) > 0) {
+	    lprint "INFO:  $q_net is an output port\n"
+	    $derated_port_cap = (0.65 * (get_cap ($startpoint_pin)))
+	    $good_size = get_opt_size $derated_port_cap 2 16 ; # some size between 2 and 16
+	    buffer_output_port $top_q_net BUFX${good_size}TH
+	    if ($holdfix_ref !~ /BUF/) { add_holdfix $startpoint_pin $holdfix_ref ; }
+	} else {
+	    lprint "INFO:  $q_net is not an output port, creating normal holdfix\n"
+	    add_holdfix $startpoint_pin $holdfix_ref
+	}
+    }
+}
+
+sub plot_my_spares {
+    my $no_pgao = $_[0] ; # this is just used to cause pgao's to not be plotted if it's a non-null string
+    plot -color red    xofill*ND2D*
+    plot -color orange xofill*CKND*
+    plot -color cyan   xofill*CKBD*
+    plot -color gray   xofill*NR2*
+    plot -color yellow xofill*MUX2*
+    plot -color brown  xofill*SDF*
+    @pgao_cells = get_cells -quiet xofill*PGAO*
+    if (scalar(@pgao_cells) > 0) { if ($no_pgao =~ /pg/) { plot -color white xofill*PGAO* ; } else { plot -color black xofill*PGAO* ; }}
+    @donor_cells = get_cells -quiet *ecodonor*ND2D3*
+    if (scalar(@donor_cells) > 0) { plot -color pink  *ecodonor* ; }
+    foreach $pin (get_pins -quiet xospare*/Z*) { @loads = get_loads $pin ; if (scalar(@loads) < 1) { $cell = get_cell_of $pin ; plot -color blue $cell ; lprint "$cell has no loads\n"; }}
+}
+
+sub find_next_size {
+    my ($cur_size, $ref) = @_;
+    if (scalar(@_) < 2) { $ref = CKBD1 ; }
+    my $next_size;
+
+    # SMT cell support
+#    if      (($cur_size == 9) && ($ref = /SMT_/)) {
+#	$next_size = 13 ;
+#    } elsif (($cur_size == 13) && ($ref =~ /SMT_/)) {
+#	$next_size = 25 ;
+#    } elsif (($cur_size == 25) && ($ref =~ /SMT_/)) {
+#	$next_size = 30 ;
+#    } elsif (($cur_size == 30) && ($ref =~ /SMT_/)) {
+#	$next_size = 40 ;
+#    } elsif (($cur_size == 40) && ($ref =~ /SMT_/)) {
+#	$next_size = 50 ;
+
+    # normal std cell support
+#    } elsif ($cur_size == 0) {
+    if ($cur_size == 0) {
+	$next_size = 1 ;
+    } elsif ($cur_size == 1) {
+	$next_size = 2 ;
+    } elsif ($cur_size == 2) {
+	if ($ref =~ /PGAO.*_INV/) {
+	    $next_size = 8 ;
+	} else {
+	    $next_size = 4 ;
+	}
+    } elsif ($cur_size == 3) {
+	$next_size = 4 ;
+    } elsif (($cur_size == 4) || ($cur_size == 5)) {
+	if ($ref =~ /PGAOP_CKN/) {
+	    $next_size = 4 ;
+	} elsif ($ref =~ /PGAO.*_BUFF/) {
+	    $next_size = 8 ;
+	} else {
+	    $next_size = 6 ;
+	}
+    } elsif ($cur_size == 6) {
+	$next_size = 8 ;
+    } elsif ($cur_size == 7) {
+	$next_size = 8 ;
+    } elsif ($cur_size == 8) {
+	if ($ref =~ /PGAO/) {
+	    $next_size = 12 ;
+	} else {
+	    $next_size = 9 ;
+	}
+    } elsif ($cur_size == 9) {
+	$next_size = 10 ;
+    } elsif ($cur_size == 10) {
+	$next_size = 12 ;
+    } elsif ($cur_size == 11) {
+	$next_size = 12 ;
+    } elsif ($cur_size == 12) {
+	$next_size = 14 ;
+    } else {
+	lprint "WARNING:  No additional size to upsize from $cur_size\n";
+	$next_size = $cur_size ;
+    }
+    #lprint "DEBUG:  returning next_size = $next_size\n"
+    return ($next_size)
+}
+
+sub find_largest_size_to_legalize {
+    my ($cell, $desired_ref, $max_displacement) = @_;
+    lprint "DEBUG1:  find_largest_size_to_legalize ($cell, $desired_ref, $max_displacement)\n";
+    my $size_found = 0
+    if (($desired_ref =~ /PGAO.*_INVD[346]/) || ($desired_ref =~ /PGAOPV_CKND[68]/)) { $desired_ref =~ s/PGAOP_...D./PGAOP_INVD8/ ; } # pgao D4 and D6 don't exist
+    if ($desired_ref =~ /PGAO.*_CKND3/)  { $desired_ref =~ s/PGAOPV_CKND3/PGAOPV_CKND4/   ; } # pgao D3 doesn't exist
+    #if ($desired_ref =~ /PGAO.*_CKND12/) { $desired_ref =~ s/PGAOPV_CKND12/PGAOPV_INVD12/ ; } # pgao D4 and D6 don't exist
+    if ($desired_ref =~ /PGAO.*_BUFFD3/) { $desired_ref =~ s/PGAOPV_BUFFD./PGAOPV_BUFFD4/ ; } # pgao D3 doesn't exist
+    if ($desired_ref =~ /PGAO.*_BUFFD6/) { $desired_ref =~ s/PGAOPV_BUFFD./PGAOPV_BUFFD8/ ; } # pgao D6 doesn't exist
+    if ($desired_ref =~ /PGAO.*_CKBD10/) { $desired_ref =~ s/PGAOPV_CKBD10/PGAOPV_CKBD12/ ; } # pgao D10 doesn't exist
+    if ($desired_ref =~ /PGAO.*_CKND10/) { $desired_ref =~ s/PGAOPV_CKND10/PGAOPV_CKND12/ ; } # pgao D10 doesn't exist
+    if ($desired_ref =~ /PGAO.*_INVD10/) { $desired_ref =~ s/PGAOPV_INVD10/PGAOPV_INVD12/ ; } # pgao D10 doesn't exist
+    if ($desired_ref =~ /PGAO.*_BUFFD10/) { $desired_ref =~ s/PGAOPV_BUFFD10/PGAOPV_BUFFD12/ ; } # pgao D10 doesn't exist
+    lprint "DEBUG2:  find_largest_size_to_legalize ($cell, $desired_ref, $max_displacement)\n";
+
+    $desired_ref =~ s/BUFF[X]*D/BUFFD/ ; # not all the X and XX sizes are available
+    $cur_ref = get_ref $cell
+    $cur_size = get_size $cell
+    $last_good_size = $cur_size
+    #$ref_root = $cur_ref ; $ref_root =~ s/(.*D).*/$1/ ; $ref_root =~ s/[X]*D/D/ ; $ref_root =~ s/P75// ; $ref_root =~ s/P25// ; $ref_root =~ s/P5// ;
+    $desired_size = $desired_ref ; $desired_size =~ s/.*D// ; $desired_size =~ s/\D+.*// ;
+
+    # first, attempt ultimate target
+    $displacement_dist = get_legal_dist_for_upsize ($cell, $desired_ref)
+    if ($displacement_dist < $max_displacement) {
+	return $desired_ref
+    } else {
+	# find largest size within desired distance
+	$next_size = find_next_size ($cur_size, $cur_ref) ; # ref just used for sorting PGAO/SMT/tsmc lib
+	$max_count = 0
+	#$cell_root_ref = get_ref $cell ; $cell_root_ref =~ s/D.*/D/ ; # assume it's unate and the only D in the string is the drive strength
+	$cell_root_ref = $cur_ref ; $cell_root_ref =~ s/(.*D).*/$1/ ; $cell_root_ref =~ s/[X]*D/D/ ; $cell_root_ref =~ s/P75// ; $cell_root_ref =~ s/P25// ; $cell_root_ref =~ s/P5// ;
+	while ((!$size_found) && ($max_count < 10)) {
+	    $next_ref = ${cell_root_ref}${next_size}
+	    $displacement_dist = get_legal_dist_for_upsize ($cell, $cell_root_ref${next_size})
+	    if ($displacement_dist < $max_displacement) {
+		$last_good_size = $next_size
+		lprint "DEBUG:  updating last good size for $cell to $last_good_size\n"
+		if ($next_size < $desired_size) {
+		    $next_size = find_next_size ($last_good_size, $desired_ref) ; # ref just used for sorting PGAO/SMT/tsmc lib
+		} else {
+		    lprint "    INFO:  upsize of $cell (${cell_root_ref}${last_good_size}) meets desired size within $max_displacement um\n"
+		    $size_found = 1
+		}
+	    } else {
+		lprint "    WARNING:  upsize of $cell (${cell_root_ref}${last_good_size}) is max within $max_displacement um\n"
+		$size_found = 1
+	    }
+	    $max_count++
+	}
+	if ($max_count > 6) { lprint "ERROR:  went through sizing loop too many times\n" ; }
+	return ${cell_root_ref}${last_good_size}
+    }
+}
+
+
+
+	# note:  if $quiet == "force", then no max fanout will be used
+sub check_load_slacks {
+    my ($src, $pin, $quiet, $min_timing) = @_ ;
+    my $worst_slack = 10000
+    if (scalar(@_) < 2) { $pin = Q ; } # default to checking Q pin slacks
+    if ((scalar(@_) > 2) && ($quiet !~ /force/)) { $print_msg = 0 ; } else { $print_msg = 1 }
+    if ((scalar(@_) > 3) && ($quiet !~ /force/)) { if ($quiet =~ /quiet/) { $print_msg = 0 ; } else { $print_msg = 1 }}
+    if ((scalar(@_) > 3) && ($min_timing =~ /min/)) { $use_hold_slack = 1 ; } else { $use_hold_slack = 0 ; }
+    my $flop ;
+    my $flop_ref ;
+    my $d_pin ;
+    my $worst_pin_name ;
+    foreach $fanout_pin (get_fanout_pins -dff -from $src) {
+	@fanout_pins = get_fanout_pins -dff -from $src
+	$num_fanout = scalar (@fanout_pins)
+	if (($num_fanout > 1000) && ($quiet !~ /force/)) {
+	    lprint "WARNING:  $src has very large fanout of $num_fanout, add arg \"check_load_slacks <pin> force\" to override\n";
+	    return ($num_fanout) ;
+	}
+        $flop = get_cell_of $fanout_pin
+        $flop_ref = get_ref $flop
+        $d_pin = "$flop/$pin"
+        if ($flop_ref =~ /SYNC/) { next ; }
+        if ($flop_ref =~ /ram_Inst/) { next ; }
+        if ($pin =~ /Q/) {
+            my $min_slack = 10000
+            my $min_slack_qpin = NULL
+            foreach $q_pin (get_pins -quiet $flop/Q*) {
+                if ($use_hold_slack) { $q_pin_slack = get_pin_slack -min $q_pin } else { $q_pin_slack = get_pin_slack $q_pin }
+                if ($q_pin_slack < $min_slack) {
+                    $min_slack      = $q_pin_slack
+                    $min_slack_qpin = $q_pin
+                }
+            }
+            if ($min_slack < 10000) {
+                if ($print_msg) { lprint "$min_slack slack $min_slack_qpin ($flop_ref)\n" ; }
+                if ($min_slack < $worst_slack) {
+                    $worst_slack = $min_slack
+                    $worst_pin_name = $min_slack_qpin
+                }
+            }
+        } elsif (($pin =~ /D/) && ($pin !~ /DN/)) { # could be D, D0, D1
+            my $min_slack = 10000
+            my $min_slack_dpin = NULL
+            foreach $d_pin (get_pins -quiet $flop/D*) {
+                if ($use_hold_slack) { $d_pin_slack = get_pin_slack -min $d_pin } else { $d_pin_slack = get_pin_slack $d_pin }
+                if ($d_pin_slack < $min_slack) {
+                    $min_slack      = $d_pin_slack
+                    $min_slack_dpin = $d_pin
+                }
+            }
+            if ($min_slack < 10000) {
+                if ($print_msg) { lprint "$min_slack slack $min_slack_dpin ($flop_ref)\n" ; }
+                if ($min_slack < $worst_slack) {
+                    $worst_slack = $min_slack
+                    $worst_pin_name = $min_slack_dpin
+                }
+	    }
+        } else { # could be E, SN, CN, CDN, etc
+            if ($use_hold_slack) { $d_pin_slack = get_pin_slack -min $d_pin } else { $d_pin_slack = get_pin_slack $d_pin }
+            if ($print_msg) { lprint "$d_pin_slack slack $flop/$pin ($flop_ref)\n" ; }
+            if ($d_pin_slack < $worst_slack) {
+                $worst_slack = $d_pin_slack
+                $worst_pin_name = $d_pin
+            }
+	}
+    }
+    if ($print_msg) { lprint "INFO:  worst slack ($worst_slack) on $src    worst: $worst_pin_name\n" }
+    return ($worst_slack)
+}
+
+
+
+
+
+
+
+
+
+# check to see how many bad startpoints for a given endpoint
+sub cnt_bad_startpoints {
+    my ($endpoint, $threshold) = @_ ;
+    if (scalar(@_) < 2) { $threshold = 0 ; }
+    if (scalar(@_) > 2) { $verbose = 1 ; } else { $verbose = 0 ; }
+    %bad_startpoint_list = ();
+    @startpoints = get_fanin_pins -dff -to $endpoint ;
+    $bad_startpoints = 0 ;
+    foreach $startpoint (@startpoints) {
+	$pin_slack = get_pin_slack $startpoint
+	if ($pin_slack < $threshold) {
+	    $bad_startpoint_list{$startpoint} = $pin_slack
+	    $bad_startpoints++;
+	}
+    }
+    @unsorted_list = ();
+    lprint "INFO:  $endpoint has $bad_startpoints worse than a threshold of $threshold ps\n"
+    if ($verbose) {
+	foreach $sp (sort(keys(%bad_startpoint_list))) {
+	    $sp_cell = get_cell_of $sp ; $sp_ref = get_ref $sp_cell ;
+	    $entry = sprintf ("%s ps, %s (%s)", $bad_startpoint_list{$sp}, $sp, $sp_ref);
+	    push (@unsorted_list, $entry)
+	    #lprint "$bad_startpoint_list{$sp} ps, $sp\n"
+	}
+	foreach $line (sort (@unsorted_list)) {
+	    lprint "$line\n"
+	}
+    }
+    return ($bad_startpoints) ;
+}
+
+
+# return highest cap of all output pins (like Q/QN of a flop) to determine if downsizing can occur
+sub find_max_output_cap {
+    my $driving_cell = $_[0]
+    my $max_cap = 0
+    @output_pins = get_pins -dir out $driving_cell/*
+    foreach $output_pin (@output_pins) {
+	my $cur_cap = get_cap $output_pin
+	if ($cur_cap > $max_cap) {
+	    $max_cap = $cur_cap ;
+	}
+    }
+    return ($max_cap)
+}
+
+# return worst negative hold slack for cell
+sub find_worst_min_slack {
+    my ($driving_cell, $specific_pin) = @_;
+    #lprint "DEBUG:  checking_worst_min_slack for $driving_cell\n"
+    my $min_slack = 20
+    my $cur_slack = 20
+    my $output_pin
+    my @output_pins
+    if (scalar(@_) > 1) {
+	@output_pins = get_pins "$driving_cell/$specific_pin"
+    } else {
+	@output_pins = get_pins -dir out $driving_cell/*
+    }
+    foreach $output_pin (@output_pins) {
+	$cur_slack = get_pin_slack -min $output_pin
+	if ($cur_slack < $min_slack) {
+	    #lprint "DEBUG:  updating $min_slack with $cur_slack for pin $output_pin\n"
+	    $min_slack = $cur_slack ;
+	}
+    }
+    return ($min_slack)
+}
+
+# return worst negative setup slack for cell
+sub find_worst_dpin_max_slack {
+    my ($driving_cell, $specific_pin) = @_;
+    #lprint "DEBUG:  checking_worst_max_slack for $driving_cell\n"
+    my $max_slack = 20
+    my $cur_slack = 20
+    my $input_pin
+    my @input_pins
+    if (scalar(@_) > 1) {
+	@input_pins = get_pins "$driving_cell/$specific_pin"
+    } else {
+	@input_pins = get_pins -dir in $driving_cell/*
+    }
+    foreach $input_pin (@input_pins) {
+	$cur_slack = get_pin_slack -max $input_pin
+	if ($cur_slack < $max_slack) {
+	    #lprint "DEBUG:  updating $max_slack with $cur_slack for pin $input_pin\n"
+	    $max_slack = $cur_slack ;
+	}
+    }
+    return ($max_slack)
+}
+
+# return worst negative setup slack for cell
+sub find_worst_max_slack {
+    my ($driving_cell, $specific_pin) = @_;
+    #lprint "DEBUG:  checking_worst_max_slack for $driving_cell\n"
+    my $max_slack = 20
+    my $cur_slack = 20
+    my $output_pin
+    my @output_pins
+    if (scalar(@_) > 1) {
+	@output_pins = get_pins "$driving_cell/$specific_pin"
+    } else {
+	@output_pins = get_pins -dir out $driving_cell/*
+    }
+    foreach $output_pin (@output_pins) {
+	$cur_slack = get_pin_slack -max $output_pin
+	if ($cur_slack < $max_slack) {
+	    #lprint "DEBUG:  updating $max_slack with $cur_slack for pin $output_pin\n"
+	    $max_slack = $cur_slack ;
+	}
+    }
+    return ($max_slack)
+}
+
+# return highest qpin cap for flop
+sub find_worst_max_cap {
+    my ($driving_cell, $specific_pin) = @_;
+    #lprint "DEBUG:  checking_worst_max_cap for $driving_cell\n"
+    my $max_cap = 0
+    my $cur_cap = 0
+    my $output_pin
+    my @output_pins
+    if (scalar(@_) > 1) {
+	@output_pins = get_pins "$driving_cell/$specific_pin"
+    } else {
+	@output_pins = get_pins -dir out $driving_cell/*
+    }
+    foreach $output_pin (@output_pins) {
+	$cur_cap = get_cap $output_pin
+	if ($cur_cap > $max_cap) {
+	    #lprint "DEBUG:  updating $max_cap with $cur_cap for pin $output_pin\n"
+	    $max_cap = $cur_cap ;
+	}
+    }
+    return ($max_cap)
+}
+
+# return highest qpin tran for flop
+sub find_worst_max_tran {
+    my ($driving_cell, $specific_pin) = @_;
+    #lprint "DEBUG:  checking_worst_max_tran for $driving_cell\n"
+    my $max_tran = 0
+    my $cur_tran = 0
+    my $output_pin
+    my @output_pins
+    if (scalar(@_) > 1) {
+	@output_pins = get_pins "$driving_cell/$specific_pin"
+    } else {
+	@output_pins = get_pins -dir out $driving_cell/*
+    }
+    foreach $output_pin (@output_pins) {
+	$cur_tran = get_tran $output_pin
+	if ($cur_tran > $max_tran) {
+	    #lprint "DEBUG:  updating $max_tran with $cur_tran for pin $output_pin\n"
+	    $max_tran = $cur_tran ;
+	}
+    }
+    return ($max_tran)
+}
+
+# sub find_adjacent_buffer_for_holdfix (return 0 if none found, else, return the sibling cell name)
+sub find_adjacent_buffer_for_holdfix {
+    my $load_pin = $_[0] ;
+    my $sibling_cell = NULL ;
+    my $driving_pin = get_driver $load_pin
+    my $dist_from_pin = 10000
+    my $best_slack = -100
+    my $sibling
+    #lprint "STARTING to look for adjacent buffers for: $load_pin\n"
+    foreach $sibling (get_loads -inst $driving_pin) {
+	if ($load_pin =~ /$sibling/) { lprint "DEBUG:  skipping $sibling because it is the load pin\n" ; next ; }
+	if ($sibling =~ /$eco_name/) { lprint "DEBUG:  returning $sibling because it's a fresh holdfix\n" ; return ($sibling) ; } # use freshly placed buffer
+	if (is_unate ($sibling, "pos")) {
+	    #lprint "INFO:  checking $sibling because it's positive unate\n"
+	    my $cur_dist = get_dist $sibling $load_pin
+	    my $cur_slack = get_pin_slack $sibling/Z
+	    if (($cur_dist < 50) && ($cur_slack > $best_slack) && ($cur_dist < $dist_from_pin)) {
+		lprint "DEBUG:  find_adjacent_buffer_for_holdfix storing $sibling, dist:  $cur_dist, best_slack:  $cur_slack\n"
+		$best_slack = $cur_slack
+		$dist_from_pin = $cur_dist
+		$sibling_cell = $sibling
+	    } 
+	} else {
+	    lprint "INFO:  skipping $sibling because it's not positive unate\n"
+	}
+    }
+    lprint "RETURNING $sibling_cell\n"
+    return ($sibling_cell)
+}
+
+# will either return the input pin parameter or will proceed up a string of single fanin unate cells
+sub get_furthest_single_fanin_pin {
+    my $input_pin = $_[0]
+    my $not_done = 100
+    my $next_driver, $next_driving_pin
+    my $driver = get_driver -inst $input_pin
+    my $driving_pin = get_driver $input_pin
+    my @loads = get_loads $driving_pin
+    my $num_loads = scalar (@loads) ;
+    if (!is_unate($driver)) {   # only looking to trace up a unate chain
+	return ($input_pin)
+    } elsif ($num_loads != 1) { # looking for only single fanout
+	return ($input_pin)
+    } else {
+      while ($not_done) {
+	$next_driving_pin = get_driver $driver/I
+	$next_driver      = get_driver $driver/I -inst
+	@loads = get_loads $next_driving_pin
+	if ((scalar(@loads) != 1) || (!is_unate($next_driver))) {
+	    return ($driver/I)
+	} else {
+	    $driver = $next_driver
+	}
+	$not_done--; # safety count
+      }
+    }
+    lprint "ERROR:  get_furthest_single_fanin_pin looped through 100 times\n"
+    return (1)
+}
+
+
+## variables needed for fix_minor_hold_viols proc
+#$enable_buffer_addition = 0 ; # set this to 1 if buffer addition is desired - ideally, first don't enable it, spin, then next time enable
+#$num_buffers_reused = 0
+#$num_buffers_added = 0
+#$num_drivers_downsized = 0
+#$reused_buffers_upsized = 0
+
+# example:  fix_minor_hold_viols ($enable_buffer_addition, @dpins_failing_hold) ; # don't add buffers
+
+# hold fixing proc that emphasizes buffer reuse and downsizing
+sub fix_minor_hold_viols {
+  my ($add_buffers, @pin_list) = @_;
+  foreach my $dpin (@dpins_failing_hold) {
+    my $updated_dpin = get_furthest_single_fanin_pin ($dpin) ; # if driven by single fanin unate cells, then move up the chain
+    $dpin = $updated_dpin
+    my $min_slack = get_pin_slack -min $dpin
+    my $max_slack = get_pin_slack -max $dpin
+    my $driver = get_driver $dpin
+    my $driving_cell = get_driver -inst $dpin
+    my $driving_cell_ref = get_ref $driving_cell
+    my $driving_net_cap  = get_cap $dpin
+    my $driving_cell_size = get_size $driving_cell
+    my $driving_cell_eff_size = get_ref_size_eff $driving_cell_ref
+    my $driving_pin_max_slack = get_pin_slack $driver
+    my $driving_pin_tran      = get_pin_tran  $driver
+    lprint "DEBUG:  checking for adjacent holdfix to $dpin\n"
+    my $adjacent_buffer = find_adjacent_buffer_for_holdfix ($dpin)
+    if ($driving_cell_ref =~ /SCDFF/) { next ; }
+    if      (($driving_cell_ref =~ /_V2_/)       && ($driving_cell_size < 9)) { $driver_may_downsize = 0 ;
+    } elsif (($driving_cell_ref =~ /SMT_SDF_/)   && ($driving_cell_size < 8)) { $driver_may_downsize = 0 ;
+    } elsif (($driving_cell_ref =~ /SMT_SD/)     && ($driving_cell_size < 4)) { $driver_may_downsize = 0 ;
+    } elsif (($driving_cell_ref =~ /SMT_/)       && ($driving_cell_size < 3)) { $driver_may_downsize = 0 ;
+    } elsif (($driving_cell_ref =~ /NVT_NDP_SD/) && ($driving_cell_size < 3)) { $driver_may_downsize = 0 ; # yes, some are x1 but ignore for now
+    } elsif  ($driving_cell_ref =~ /DEL/)                                     { $driver_may_downsize = 0 ;
+    } elsif                                         ($driving_cell_size == 0) { $driver_may_downsize = 0 ;
+    } else  {                                                                   $driver_may_downsize = 1 ;
+    }
+    if      (($driving_net_cap > 0.009) && ($driving_cell_size < 2)) { $driver_may_downsize = 0
+    } elsif (($driving_net_cap > 0.016) && ($driving_cell_size < 3)) { $driver_may_downsize = 0
+    } elsif (($driving_net_cap > 0.020) && ($driving_cell_eff_size < 4))  { $driver_may_downsize = 0
+    } elsif (($driving_net_cap > 0.030) && ($driving_cell_eff_size < 8))  { $driver_may_downsize = 0
+    } elsif (($driving_net_cap > 0.040) && ($driving_cell_eff_size < 12)) { $driver_may_downsize = 0
+    } elsif ($driving_pin_tran > 0.130)                                   { $driver_may_downsize = 0
+    }
+    lprint "DEBUG_1:  $driving_cell ($driving_cell_ref) $driving_cell_size, may downsize = $driver_may_downsize\n"
+    lprint "DEBUG_1:  min_slack = $min_slack, adjacent_buffer = $adjacent_buffer\n"
+    if ($min_slack < 0.005) {
+	if ($adjacent_buffer !~ /NULL/) {
+	    lprint "INFO:  HOLDFIX will use adjacent_buffer\n"
+	    my $adjacent_buffer_delay = mrt -from $adjacent_buffer/I -to $adjacent_buffer/Z -rtn_delay
+	    if (($adjacent_buffer_delay * 1.5) < $max_slack) {
+		$adjacent_ref = get_ref $adjacent_buffer
+		lprint "holdfix_excellent:  $dpin is using $adjacent_buffer ($adjacent_ref)\n"
+		mod pin $dpin = $adjacent_buffer/Z
+		my $new_net_cap = (0.3 * (get_cap $adjacent_buffer/Z)) - 0.005
+		my $good_size = get_opt_size ($new_net_cap, 0, 4)
+		my $cur_size = get_size ($adjacent_buffer)
+		if (($good_size > $cur_size) && ($adjacent_ref !~ /DEL/)) { upsize_cell $adjacent_buffer $good_size ; $reused_buffers_upsized++ }
+		$num_buffers_reused++;
+	    }
+	# look for case where downsizing the driver will make a small gain
+	} elsif (($min_slack > -0.004) && $driver_may_downsize && ($driving_pin_max_slack > 0.150)) {
+	    lprint "holdfix_good:  $dpin is using $adjacent_buffer ($adjacent_ref)\n"
+	    lprint "INFO:  cannot find nearby adjacent buffer for $dpin, need but able to downsize driver\n"
+	    size_cell $driving_cell -down 1
+	    $num_drivers_downsized++;
+	} elsif (($min_slack > -0.017) && ($max_slack > 0.150)) {
+	    if ($min_slack < 0.000) {
+		lprint "Need to add a buffer on $dpin\n"
+		my @ep_coords = get_pin_xy $dpin
+		if ($add_buffers) {
+		    add_holdfix_xy $dpin BUFFD1HVT @ep_coords
+		    $num_buffers_added++;
+		}
+	    } else {
+		lprint "skipping $dpin due to insufficient neg slack for buffer addition\n"
+	    }
+	} else {
+	    lprint "WARNING:  endpoint $dpin is outside of normal limits ($min_slack)\n"
+	}
+    } else {
+	#lprint "INFO:  skipping $d_pin because slack is greater than 5 ps threshold\n"
+    } 
+  }
+}
+
+# example: shift_loads (CLK_USKEW_ROD_2819, CLK_USKEW_ROD_2930)
+sub shift_loads {
+    my ($donor_buffer, $receiving_buffer) = @_;
+    mod pins (get_loads $donor_buffer/Z) = $receiving_buffer/Z
+    remove_buffer $donor_buffer
+}
+
+# this expects a full hierarchical path to the cell, 4 args means full hier path is at the current scope
+sub insert_buffer_if_legal {
+    my ($input_pin, $desired_cell_ref, $max_displacement, $par_level_name) = @_;
+    if (scalar(@_) < 4) { $par_level_name = 0 ; } else { $par_level_name = 1 ; }
+    # determine max upsize within legal delta
+    #lprint "DEBUG:  ccil args:  $cell_inst, $desired_cell_ref, $max_displacement\n"
+    my $local_par;
+    my $local_pin;
+    my $cur_top = set_top ;
+    if (!$par_level_name) {
+	$local_par = translate_pin_to_par_name $input_pin ;
+	$local_pin = translate_pin_to_local_pin_name ($input_pin) ;
+	set_top $local_par ;
+    } else {
+	$local_pin = $input_pin ;
+    }
+    my @anchor_coords = get_pin_xy $local_pin
+    my ($displacement_dist, $found_x, $found_y) = get_legal_dist_for_insert_xy (@anchor_coords, $desired_cell_ref) ;
+    if ($displacement_dist < $max_displacement) {
+	lprint "INFO:  adding $desired_cell_ref -> $input_pin, displacement:  $displacement_dist\n"
+	set_top $cur_top
+	if ($par_level_name) {
+	    add_nbuf $input_pin $desired_cell_ref $cur_top
+	} else {
+	    add_nbuf $input_pin $desired_cell_ref
+	}
+	return (1) ; # return number of changes
+    } else {
+	lprint "WARNING:  unable to add $desired_cell_ref -> $input_pin, displacement:  $displacement_dist\n"
+	set_top $cur_top
+	return (0)
+    }
+}
+
+sub insert_holdfix_cell_if_legal {
+    my ($input_pin, $desired_cell_ref, $max_displacement, $par_level_name) = @_;
+    if (scalar(@_) < 4) { $par_level_name = 0 ; } else { $par_level_name = 1 ; }
+    # determine max upsize within legal delta
+    #lprint "DEBUG:  ccil args:  $cell_inst, $desired_cell_ref, $max_displacement\n"
+    my $local_par;
+    my $local_pin;
+    my $cur_top = set_top ;
+    if (!$par_level_name) {
+	$local_par = translate_pin_to_par_name $input_pin ;
+	$local_pin = translate_pin_to_local_pin_name ($input_pin) ;
+	set_top $local_par ;
+    } else {
+	$local_pin = $input_pin ;
+    }
+    my @anchor_coords = get_pin_xy $local_pin
+    my ($displacement_dist, $found_x, $found_y) = get_legal_dist_for_insert_xy (@anchor_coords, $desired_cell_ref) ;
+    if ($displacement_dist < $max_displacement) {
+	lprint "INFO:  adding $desired_cell_ref -> $input_pin, displacement:  $displacement_dist\n"
+	set_top $cur_top
+	if ($par_level_name) {
+	    add_holdfix $input_pin $desired_cell_ref $cur_top
+	} else {
+	    add_holdfix $input_pin $desired_cell_ref
+	}
+	return (1) ; # return number of changes
+    } else {
+	set_top $cur_top
+	lprint "WARNING:  insert_holdfix_cell_if_legal unable to add $desired_cell_ref at $input_pin due to displacement of $displacement_dist exceeding $max_displacement um\n"
+	return (0)
+    }
+}
+
+sub find_root_clk_driver { # either find semicustom or clkgate driver
+    my $clk_pin = $_[0]
+    #lprint "DEBUG_frcd:  entering find_root_clk_driver, looking for driver of $clk_pin\n"
+    my $cur_driver = get_driver -inst $clk_pin
+    my $cur_driver_ref = get_ref $cur_driver
+    my $next_driver
+    #lprint "DEBUG_frcd:  looking for clkgate, cur driver inst = $cur_driver ($cur_driver_ref)\n"
+    while (($cur_driver_ref !~ /NV/) && ($cur_driver_ref !~ /LAT/) && ($cur_driver_ref !~ /CKLNQ/)) {
+        $next_driver = get_driver -inst $cur_driver/I
+        $cur_driver = $next_driver
+        $cur_driver_ref = get_ref $cur_driver
+        #lprint "DEBUG_frcd:  looking for clkgate, cur driver inst = $cur_driver ($cur_driver_ref)\n"
+    }
+    return $cur_driver
+}
+
+# trace back unate string with single fanout or multifanout and good slack
+sub po4_swap_fanin {
+    my ($endpoint, $min_worst_slack_margin, $verbose) = @_
+    if (scalar(@_) > 2) { $verbose = 1 ; } else { $verbose = 0 ; }
+    my $driving_pin, $driving_inst, $cur_input_slack;
+    my $done = 0
+    my $min_worst_slack_margin_adjusted = $min_worst_slack_margin
+    my $num_po4_swaps = 0
+    my $cur_input = $endpoint
+    while (!$done) {
+	$cur_input_slack = get_pin_slack $cur_input
+	$driving_pin  = get_driver $cur_input
+	$driving_inst = get_driver $cur_input -inst
+	if (is_unate($driving_inst) && (($cur_input_slack > $min_worst_slack_margin_adjusted) || is_th($driving_inst))) {
+	    $cur_input = $driving_inst/I
+	    $min_worst_slack_margin_adjusted = $min_worst_slack_margin_adjusted + 0.004 ; # assume losing 4 ps for each po4 swap
+	    $num_po4_swaps++
+	} else {
+	    $done = 1
+	    return $num_po4_swaps
+	}
+	if (!is_po4($driving_inst)) {
+	    po4_swap $driving_inst $verbose ;
+	}
+    }
+}
+
+sub find_first_non_unate_driver {
+    my $input_pin = $_[0]
+    my $next_driver;
+    my $max_count = 100
+    while ($max_count) {
+	$driver = get_driver -inst $input_pin
+	if (is_unate($driver)) {
+	    $input_pin = $driver/I
+	    $driver = get_driver -inst $input_pin
+	} else {
+	    return $driver
+	}
+	$max_count--;
+    }
+    return ("ERROR")
+}
+
+sub swap_to_std_flop {
+    my $flop = $_[0] ;
+    my $ref = get_ref $flop ;
+    my $new_ref ;
+    if ($ref =~ /CSNMDD/) {
+	lprint "WARNING:  $flop ($ref) is not functionally equivalent in tsmc28, skipping...\n";
+    } elsif (($ref =~ /MDD/) || ($ref =~ /HSD/)) {
+	$new_ref = $ref ; $new_ref =~ s/MDD/D/ ; $new_ref =~ s/HSD/D/ ;
+	change_link $flop $new_ref
+    } else {
+	lprint "WARNING:  $flop ($ref) is not a high perf flop\n";
+    }
+}
+
+sub trace_unate_path_fanout {
+    my $startpoint_pin = $_[0] ;
+    my $cur_driver = get_driver $startpoint_pin ;
+    my $done = 0 ;
+    my $run_loop = 30 ;
+    my @loads = get_loads $cur_driver ;
+    my @next_driver_output_pins ;
+    my $load_inst ;
+    my $worst_slack ;
+    my $load_slack ;
+    my $next_driver_inst ;
+    if (scalar(@loads) == 0) { return $cur_driver ; } 
+    while (!done && $run_loop) {
+	$next_driver_inst = NONE ;
+	$worst_slack = 1000 ;
+	@loads = get_loads $cur_driver
+	foreach $load_inst (get_loads -inst $cur_driver) {
+	    if (is_unate($load_inst)) {
+		$load_slack = get_pin_slack $load_inst/I
+			# if there are multiple unate loads, follow the path with the worst slack
+		if ($load_slack < $worst_slack) {
+		    $worst_slack = $load_slack ;
+		    $next_driver_inst = $load_inst ;
+		}
+	    }
+	}
+	if ($next_driver_inst =~ /NONE/) {
+	    $done = 1 ;
+	    return ($loads[0]) ;
+	} else {
+	    @next_driver_output_pins = get_pins -dir out $next_driver_inst/Z*
+	    $cur_driver = $next_driver_output_pins[0] ;
+	}
+	$run_loop-- ;
+	if (!$run_loop) { lprint "killing loop...\n"; return ($loads[0]) ; }
+    }
+}
+
+
+sub swap_out_sad_flop {
+    my $flop = $_[0] ;
+    my $dpin_slack = get_pin_slack $flop/D ;
+    my $qpin_slack = find_worst_max_slack ($flop) ;
+    my $ref = get_ref $flop ;
+    my $new_ref ;
+    my $size ;
+    if ($ref !~ /SAD/) { lprint "WARNING:  $flop ($ref) is not an SAD flop\n"; next ; }
+    # check for case where SAD flop has just one qpin load and it's a small holdfix cell
+    my $qpin ;
+    if ($ref =~ /QN/) { $qpin = QN ; } else { $qpin = Q ; }
+    my @qpin_loads = get_loads -inst "$flop/$qpin"
+    my $qpin_has_only_holdfix_load
+    my $qpin_load_size = get_size $qpin_loads[0];
+    my $qpin_cap
+    my $holdfix_output_cap
+    if ((scalar(@qpin_loads) == 1) && is_holdfix($qpin_loads[0]) && ($qpin_load_size < 5)) { # one lone holdfix and it isn't a large buffer
+	if (is_unate ($qpin_loads[0], "pos")) {
+	    $qpin_cap = get_cap "$flop/$qpin"
+	    $holdfix_output_cap = get_cap $qpin_loads[0]/Z
+	    if ($qpin_cap > $holdfix_output_cap) { remove_buffer $qpin_loads[0]          ; # keep the net name connected to the Qpin
+	    } else				 { remove_buffer_keep_net $qpin_loads[0] ; # keep the output net of the holdfix
+	    }
+	    $qpin_has_only_holdfix_load = 1 ;
+	} else {
+	    $qpin_has_only_holdfix_load = 0 ;
+	}
+    } else {
+	$qpin_has_only_holdfix_load = 0 ;
+    }
+
+      # plenty of D pin slack - just swap it
+    if ($dpin_slack > 0.050) {
+	lprint "SAD_EASY_SWAP ($ref) ($dpin_slack/$qpin_slack) $flop\n"
+	$new_ref = $ref ; $new_ref =~ s/SAD/D/ ;
+	change_link $flop $new_ref
+	if (!is_po4($flop)) { po4_swap $flop ; }
+
+      # plenty of Q pin slack - just swap it and skew late 1 level, if flop only has a holdfix load - then yank it and gain slack there rather than MD flop
+    } elsif (($qpin_slack > 0.050) || (($qpin_slack > 0) && $qpin_has_only_holdfix_load)) {
+	lprint "SAD_SKEW_SWAP ($ref) ($dpin_slack/$qpin_slack) $flop\n"
+	$new_ref = $ref ; $new_ref =~ s/SAD/D/ ;
+	change_link $flop $new_ref
+	# for case where buffer was removed and potentially slack is marginal - upsize to D2
+	if (($new_ref =~ /D1/) && $qpin_has_only_holdfix_load) {
+	    $qpin_cap = get_cap "$flop/$qpin" ; # buffer already removed so cap has increased presumably
+	    if (($qpin_cap > 0.006) || ($qpin_slack < 0.050)) { upsize_cell $flop 2 ; po4_swap $flop ; } # by definition, these are never TH or PO4
+	}
+	add_skewbuf $flop/CP ; # add skewbuf afterwards or it may occupy a valuable spot
+        if ($dpin_slack < 0.015) {
+	    add_skewbuf $flop/CP ; # add another skewbuf if slack is tight
+	}
+
+      # not enough Q pin slack - swap it and skew late 1 level + MD flop
+    } elsif ($qpin_slack > 0) {
+	lprint "SAD_SKEW_MD_SWAP ($ref) ($dpin_slack/$qpin_slack) $flop\n"
+	$new_ref = $ref ; $new_ref =~ s/SAD/MDD/ ;
+	$size = get_size $flop
+	if ($size < 2) {
+	    $new_ref =~ s/MDD1/MDD2/ ;
+	}
+	change_link $flop $new_ref
+	add_skewbuf $flop/CP
+
+      # not any Q pin slack - swap it in protest with skewbuf
+    } else {
+	lprint "SAD_HARD_SWAP ($ref) ($dpin_slack/$qpin_slack) $flop\n"
+	$new_ref = $ref ; $new_ref =~ s/SAD/MDD/ ;
+	$size = get_size $flop
+	if ($size < 2) {
+	    $new_ref =~ s/MDD1/MDD2/ ;
+	}
+	change_link $flop $new_ref
+	add_skewbuf $flop/CP
+    }
+      # And furthermore, if a holdfix was added and not needed for good transition to flop, then lose it
+    my $dpin_driver = get_driver -inst $flop/D
+    my $dpin_driver_input_tran
+    my $dpin_driver_ref
+    if (is_holdfix($dpin_driver)) {
+	$dpin_driver_input_tran = get_pin_tran $dpin_driver/I
+	if ($dpin_driver_input_tran < 0.080) {
+	    $dpin_driver_ref = get_ref $dpin_driver
+	    lprint "SAD_HOLDFIX_REMOVAL:  yanking $dpin_driver ($dpin_driver_ref)\n" ;
+	    yank_buffer $dpin_driver
+	}
+    }
+}
+
+
+sub tunedown_md_flop {
+    my ($td_flop, $td_dpin_slack_threshold, $td_qpin_slack_threshold) = @_ ;
+    my $plot_flops ;
+    if (scalar(@_) > 3) { $td_plot_flops = 1 ; } else { $td_plot_flops = 0 ; }
+    $td_flop_ref = get_ref $td_flop
+    if (($td_flop_ref !~ /MDD/) && ($td_flop_ref !~ /MDV2D/)) { return (0) ; } # if it's not an MD flop, no sense continuing
+    $td_qpin_slack = find_worst_max_slack $td_flop
+    $td_worst_cap = find_worst_max_cap $td_flop
+    if (scalar(@_) < 2) {       # no thresholds mean just swap it down without analysis
+	$td_new_ref = $td_flop_ref ; $td_new_ref =~ s/MDV.D/D/ ; $td_new_ref =~ s/MDD/D/ ; 
+	change_link $td_flop $td_new_ref
+	lprint "TUNEDOWN_FLOP_FORCED:  dpin/qpin = $td_dpin_slack / $td_qpin_slack, worst_cap:  $td_worst_cap, $td_flop ($td_flop_ref) -> $td_new_ref\n";
+	return (1) ;
+    }
+    $td_dpin_slack = find_worst_dpin_max_slack $td_flop
+    if ($td_qpin_slack > 100) { return (0) ; } # might be an interpar fanout and shouldn't be downsized
+    if (($td_dpin_slack > $td_dpin_slack_threshold) && ($td_flop_ref =~ /MD/) && ($td_qpin_slack > $td_qpin_slack_threshold)) {
+	$td_new_ref = $td_flop_ref ; $td_new_ref =~ s/MDV.D/D/ ; $td_new_ref =~ s/MDD/D/ ;
+	if ($td_plot_flops) { plot -color red $td_flop ; }
+	change_link $td_flop $td_new_ref
+	$td_flop_size = get_size $td_flop
+	$td_worst_cap = find_worst_max_cap ($td_flop)
+	if (($td_worst_cap > 0.006) && ($td_flop_size < 4)) { upsize_cell $td_flop 4 ; }
+	$flop_size = get_size $td_flop
+	if (($td_worst_cap > 0.010) && ($td_flop_size < 8)) { upsize_cell $td_flop 8 ; }
+	$td_new_ref = get_ref $td_flop
+	lprint "TUNEDOWN_FLOP_INFO:  dpin/qpin = $td_dpin_slack / $td_qpin_slack, worst_cap:  $td_worst_cap, $td_flop ($td_flop_ref) -> $td_new_ref\n";
+	if ($td_plot_flops) { plot -color green $td_flop ; }
+	return (1) ;
+    } else {
+	lprint "TUNEDOWN_FLOP_NOT_CHANGED:  dpin/qpin = $td_dpin_slack / $td_qpin_slack, worst_cap:  $td_worst_cap, $td_flop ($td_flop_ref) THRESHOLDS:  dpin:  $td_dpin_slack_threshold, qpin:  $td_qpin_slack_threshold\n";
+	return (0) ;
+    }
+}
+
+sub tuneup_lp_flop {
+    my ($lp_flop, $desired_size) = @_ ;
+    my $change_size ;
+    if (scalar(@_) > 1) { $change_size = 1 ; } else { $change_size = 0 ; }
+    my $lp_flop_ref = get_ref $lp_flop
+    my $non_lp_ref = $lp_flop_ref ; $non_lp_ref =~ s/LP// ; $non_lp_ref =~ s/V2// ; $non_lp_ref =~ s/RP// ;;
+    change_link $lp_flop $non_lp_ref
+    if ($change_size) { size_cell $lp_flop $desired_size ; }
+}
+
+sub tunedown_hs_flop {
+    my ($hs_flop, $desired_size) = @_ ;
+    my $change_size ;
+    if (scalar(@_) > 1) { $change_size = 1 ; } else { $change_size = 0 ; }
+    my $hs_flop_ref = get_ref $hs_flop
+    if (!is_hs($hs_flop)) { lprint "SKIPPING:  $hs_flop is not an hs_flop ($hs_flop_ref)\n" ; return (0) ; }
+    my $non_hs_ref = $hs_flop_ref ; $non_hs_ref =~ s/HSD/D/ ;
+    change_link $hs_flop $non_hs_ref
+    if ($change_size) { size_cell $hs_flop $desired_size ; }
+}
+
+sub tunedown_jt_flop {
+    my ($jt_flop, $desired_size) = @_ ;
+    my $change_size ;
+    if (scalar(@_) > 1) { $change_size = 1 ; } else { $change_size = 0 ; }
+    my $jt_flop_ref = get_ref $jt_flop
+    my $non_jt_ref = $jt_flop_ref ; $non_jt_ref =~ s/NVT_// ; $non_jt_ref =~ s/_A1JT25// ;
+    change_link $jt_flop $non_jt_ref
+    if ($change_size) { size_cell $jt_flop $desired_size ; }
+}
+
+sub get_holdfix_ref {
+    my ($viol, $suffix) = @_ ;
+    if ($viol > 0.010) {
+        lprint "NO HOLDFIX required for slack $viol\n";
+        return (0)
+        # there is an implicit 5ps of margin
+    } elsif ($viol > -0.005) { return (BUFFD1${suffix}) ;
+    } elsif ($viol > -0.012) { return (DEL020D1${suffix}) ;
+    } elsif ($viol > -0.015) { return (DEL025D1${suffix}) ;
+    } elsif ($viol > -0.020) { return (DEL030D1${suffix}) ;
+    } elsif ($viol > -0.025) { return (DEL035D1${suffix}) ;
+    } elsif ($viol > -0.030) { return (DEL040D1${suffix}) ;
+    } elsif ($viol > -0.040) { return (DEL050D1${suffix}) ;
+    } elsif ($viol > -0.050) { return (DEL060D1${suffix}) ;
+    } else                   { return (DEL075D1${suffix}) ;
+    }
+}
+
+# returns which load of source flop qpin is in the path to the scan shift path (go look at # eco_a_023 # for gm20b-SM) ; # /home/scratch.pbahr_gm20b/t210/nvgpu_gmlit3/timing/gm20b/eco/timing_gm20b/chiplet/smmmio/eco_a_023.smmmio20b.medic
+sub trace_scan_back_to_qpin {
+    my $si_pin = $_[0] ;
+    my $last_load = $si_pin ;
+    my $cur_driver = get_driver -inst $last_load
+    while (is_unate($cur_driver)) {
+	$last_load = $cur_driver ;
+	$cur_driver = get_driver -inst $cur_driver
+    }
+    lprint "INFO:  trace_scan_back_to_qpin is returning $last_load/I as qpin driver to $si_pin\n";
+    return ($last_load/I)
+}
+

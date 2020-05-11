@@ -1,0 +1,9 @@
+@ram_list = get_cells_of *RAM* ;
+$area = 0 ;
+$sum = 0 ;
+foreach (@ram_list) {
+  chomp ;
+  $area = get_area (get_ref $_) ;
+  $sum = $sum + $area ;
+}
+print "the rams\' area is $sum. \n" ;

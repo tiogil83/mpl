@@ -1,0 +1,59 @@
+my @pars = qw "GPAF0LTS1 GPAG0GP GPAS0FE GPAS0PD" ;
+foreach my $par(@pars){
+  open_log "/home/junw/gp10b/compare.${par}.log" ;
+  @viol_files = () ;
+  @viol_files_0p5v = () ;
+  @viol_files =  glob "/home/scratch.gp10b_partition_2/gp10b/gp10b/timing/gp10b/rep/${par}.*02300.*_si*std_min*.viol.gz" ;
+  @viol_files_0p5v =  glob "/home/scratch.gp10b_partition/gp10b/gp10b/timing/gp10b/rep/${par}.*02300.*_si*std_min*.viol.gz" ;
+  push @viol_files, @viol_files_0p5v ; 
+  
+  my @corners ;
+  
+  foreach $viol_file (@viol_files){
+    chomp $viol_file ;
+    load_vios $viol_file ;
+    $viol_file =~ /pt\.(\S+)\.std_min/ ;
+    $corner = $1 ;
+    push @corners $corner ; 
+  }
+  
+  @corners = remove_duplicates @corners ;
+  
+  foreach $corner1 (@corners){
+    foreach $corner2 (@corners){
+      @vios1 = () ; 
+      @vios2 = () ; 
+      @vio_corner1=();
+      @vio_corner2=();
+      select_vios -filter "project_corner=~/$corner1/ and type_class =~ /min_path/ and slack < -0.000 and start_pin !~ /ram_Inst/ and end_pin !~ /ram_Inst/" ; 
+      @vios1 = all_vios ;
+      foreach my $vio1 (@vios1){push @vio_corner1 attr_of_vio(end_pin=>$vio1);}
+      print "test1 $corner1 $#vios1\n" ;
+      select_vios -filter "project_corner=~/$corner2/ and type_class =~ /min_path/ and slack < -0.000 and start_pin !~ /ram_Inst/ and end_pin !~ /ram_Inst/" ;
+      @vios2 = all_vios ;
+      foreach my $vio2 (@vios2){push @vio_corner2 attr_of_vio(end_pin=>$vio2);}
+      print "test2 $corner2 $#vios2\n" ;
+      @vio_corner1 = remove_duplicates @vio_corner1 ;
+      @vio_corner2 = remove_duplicates @vio_corner2 ; 
+      #Get common
+      $vios1_num = $#vio_corner1 + 1 ;
+      @common_num = () ;
+      @common_num = (get_intersection @vio_corner1 @vio_corner2) ;
+      $common_num = $#common_num + 1 ;
+      $common{$corner1}{$corner2} = $common_num ;
+      lprint "$corner1 $corner2 common viol: $common{$corner1}{$corner2} $vios1_num\n" ;
+      #Get difference
+      @diff_num = () ;
+      @diff_num = (get_missing @vio_corner1 @vio_corner2) ;
+      $diff_num = $#diff_num + 1 ;
+      $diff{$corner1}{$corner2} = $diff_num ;
+      lprint "$corner1 $corner2 diff viol: $diff{$corner1}{$corner2} $vios1_num\n" ;
+    }
+  }
+  
+  `grep "common viol" /home/junw/gp10b/compare.${par}.log > /home/junw/gp10b/cp.txt.${par}` ;
+  `grep "diff viol" /home/junw/gp10b/compare.${par}.log > /home/junw/gp10b/diff.txt.${par}` ;
+  
+  clear_vios ;
+  close_log ;
+}

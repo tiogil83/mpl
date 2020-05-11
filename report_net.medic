@@ -1,0 +1,22 @@
+open IN, "/home/junw/fil_tran" ;
+open OUT, "> /home/junw/net" ;
+my %net_all ;
+while(<IN>){
+  chomp ;
+  s/^(\S+)\(.*/$1/g  ;
+  s/^(\S+)\s+.*/$1/g ;
+  $pin = $_ ;
+  @nets = get_conns -net $pin ;
+  $net = $nets[0][0] ; 
+  print $net ;
+  if(exists $net_all{$net}){  
+    next ;
+  }else{
+    print OUT "$net\n" ;
+    $net_all{$net} = 1 ;
+    next ;
+  }
+}
+
+close IN ;
+close OUT; 

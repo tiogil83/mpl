@@ -1,0 +1,42 @@
+@files = glob "/home/junw/*Dec8*"
+open OUT , "> /home/junw/ipo30000.net_length" ;
+
+foreach (@files) {
+  if(!(/ndr/)){
+    print ;
+    open IN, "$_" ;
+    /(GMGPAD0.*)/ ; 
+    $par = $1 ;
+    $par = lc $par ;
+    while(<IN>) {
+      (/(.*?) /) ;
+      $net = $1 ;
+      $net = "$par\/$net" ;
+      $length = (get_route_length $net) ; 
+      #if(is_wide_net $net) {
+      if($length > 1000) { 
+        print OUT "$net $length is_wide_net > 1000\n" ;
+      }elsif($length > 400) {
+        print OUT "$net $length > 400\n" ;
+      }else{
+        print OUT "$net $length \n" ;
+      }
+        #print OUT "$net $length is_wide_net\n" ;
+      #}else{
+      #  #if($length > 1000) {
+      #  #  print OUT "$net $length is_wide_net > 1000\n" ;
+      #  #}elsif($length > 400) {
+      #  #  print OUT "$net $length is_wide_net > 400\n" ;
+      #  #}else{
+      #  #  print OUT "$net $length is_wide_net\n" ;
+      #  #}
+      #  print OUT "$net $length not_wide_net\n" ;
+      #}
+    }
+  }else{
+    next ;
+  }
+} 
+
+close IN ;
+close OUT ;

@@ -1,0 +1,12 @@
+open_log ss_0c_0p85v.leakage.txt ;
+@pars = qw " GMDF0CR GMDF0CR1 GMDF0LTS GMDF0LTS1 GMDF0ZR GMDF0ZR1 GMDG0GP GMDG0SC GMDG0XBG GMDG0ZF GMDP0PES GMDS0FBH GMDS0FE GMDS0HB GMDS0HI GMDS0PD GMDT0PE GMDT0TX0 GMDT0TX0B GMDT0TX1 GMDT0TX1B GMDT1PE GMDT1TX0 GMDT1TX0B GMDT1TX1 GMDT1TX1B GMDSM0SCTLA GMDSM0SCTLB GMDSM0SDLQA GMDSM0SDLQB GMDSM0SMIO " ;
+#@pars = qw "GMDF0CR" ;
+foreach $par(@pars) {
+  set_top $par ;
+  $ipo = get_ipo_num $par ;
+  lprint "=" x 30 . "\n" ;
+  lprint "$par.ipo$ipo\n" ;
+  report_leakage ;
+  lprint "=" x 30 . "\n" ;
+}
+close_log ;

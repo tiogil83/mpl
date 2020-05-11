@@ -1,0 +1,25 @@
+@xx = qw "
+GPYPAD0PEX0:transfix_clock_9969_u_GPY_T0_1500_wrapper/dftModules_gpypad0pex0/dftModulesWrapper_GPYPAD0PEX0_inst_SCANLINK_SDP_GPYPAD0PEX0_inst_xtr_scan_in_g0_1_4_sdp_rt1:eco2016Feb16_trans_fix_transfix_clock_9969_u_GPY_T0_1500_wrapper_dftModules_gpypad0pex0_dftModulesWrapper_GPYPAD0PEX0_inst_SCANLINK_SDP_GPYPAD0PEX0_inst_xtr_scan_in_g0_1_4_sdp_rt1_buf_drv
+GPYPAD0PEX0:xp3g2pctl_L9_serial_rate_control_link_rtmain:ecopex_fixvio_0216_xp3g2pctl_L9_serial_rate_control_link_rtmain_buf_drv
+GPYPAD0PEX0:transfix_clock_9943_u_GPY_T0_1500_wrapper/dftModules_gpypad0pex0/dftModulesWrapper_GPYPAD0PEX0_inst_SCANLINK_SDP_GPYPAD0PEX0_inst_xtr_scan_in_g0_1_1_sdp_rt0:eco2016Feb16_trans_fix_transfix_clock_9943_u_GPY_T0_1500_wrapper_dftModules_gpypad0pex0_dftModulesWrapper_GPYPAD0PEX0_inst_SCANLINK_SDP_GPYPAD0PEX0_inst_xtr_scan_in_g0_1_1_sdp_rt0_buf_drv
+
+" ;
+
+$top = get_top ;
+chomp $top ;
+load "/home/gp107_layout/tot/layout/revP3.0/netlists/constraints/GP*PAD*.wide_nets" ;
+
+foreach (@xx) {
+$blk = $_ ;
+$blk =~ s/(.*):.*:.*/$1/ ;
+set_top $blk ;
+$net = $_ ;
+$net =~ s/.*:(.*):.*/$1/ ;
+$buf = $_ ;
+$buf =~ s/.*:.*:(.*)/$1/ ;
+$pin = "$buf/Z" ;
+$out_net = name_of_net (net_of_pin $pin) ;
+#$M_wide_nets{GPHPAD0DISP0}{clks/gphpad0disp0/sppll1_clkoutp_o}
+$wide_net = $M_wide_nets{$blk}{$net} ;
+print "$blk $out_net $wide_net\n" ;
+}

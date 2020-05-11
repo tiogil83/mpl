@@ -1,0 +1,13 @@
+@all_insts = get_cells * -hier ;
+$area = 0 ;
+$sum = 0 ;
+foreach (@all_insts){
+  if(is_analog_ref (get_ref $_)){
+    $area = get_area (get_ref $_) ;
+    $sum = $sum + $area ;
+    next ;
+  }else{
+    next ;
+  } 
+}
+print "the analog\'s area is $sum. \n" ;

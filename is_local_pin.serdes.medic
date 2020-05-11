@@ -1,0 +1,40 @@
+open IN, "test_serdes1f_clk.file" ;
+
+open OUT_par, "> par.test_serdes1f_clk.file" ;
+open OUT_macro, "> macro.test_serdes1f_clk.file" ;
+
+while(<IN>){
+  (m/(.*?)\/(\S+) (\S+)/) ;
+  $par = $1 ;
+  $pin = $2 ;
+  $clk = $3 ;
+  $par = uc $par ;
+  set_top $par ; 
+  if ((attr_of_pin ("is_local", $pin)) == 1) {
+    $root_net = get_root $pin ;
+    $par = lc $par
+    $root = get_driver -inst $root_net ;
+    $ref = get_ref $root ;
+    if ($ref =~ /CKL/) {
+       print OUT_par "$par/$pin $clk is_driven_cg $root\n" ;
+    }elsif($root =~ /_mux$/){
+       print OUT_par "$par/$pin $clk is_driven_mux $root\n" ;
+    }else{
+       print OUT_par "$par/$pin $clk no_idea $root\n" ;
+    }
+  }else{
+    @cons = get_pin_context_whier $pin ;
+    $par = lc $par ;
+    $macro_inst = $cons[0] ;
+    $macro = $cons[1] ;
+    $macro_pin = "$cons[2]/$cons[4]" ;
+    set_top $macro ;
+    $macro_net = get_root $macro_pin ;
+    $macro_port = get_driver $macro_net ;
+    print OUT_macro "$par/$macro_inst/$macro_pin $par/$macro_inst/$macro_port\n" ;
+  }
+}
+
+close IN ;
+close OUT_par ;
+close OUT_macro ;

@@ -1,0 +1,17 @@
+open IN, "/home/junw/a" ;
+open OUT, " > root" ;
+while (<IN>) {
+  chomp ;
+  if(/^gmgpad/){
+    if(get_pin -quiet $_){
+      (@fanin) = all_fanin -to $_ -flat -startpoints_only ;
+      foreach (@fanin) {
+        print OUT $_."\n" ;
+      }
+    }else{
+      print OUT "can't find the pin : $_\n" ;
+    }
+  }
+}
+close IN ;
+close OUT ;

@@ -1,0 +1,385 @@
+###################################
+## timing fix script for chiplet ##
+###################################
+
+######################
+## define variables ##
+######################
+my $top_name   = "NV_gmb_s0";
+my $datecode   = "2014Jan25_07";
+my $anno_rev   = "5300";
+
+my $proj       = "gm204";
+my $litter     = "gm204";
+my $run_dir    = "/home/scratch.gm204_NV_gmb_s0/gm204/gm204/timing";
+my $rep_dir    = "${run_dir}/${proj}/rep";
+my $suffix     = "_fix_setup";
+my $eco_dir    = "${proj}/eco/${top_name}_mender/${datecode}";
+my $unique_id  = `date "+%Y%b%d_%H_%M"`;
+chomp($unique_id);
+
+system ("mkdir -p $eco_dir");
+open_log "${eco_dir}/${top_name}.${datecode}_fixall.mender${suffix}.${unique_id}.log";
+
+##### Loading power setting
+load gm204/mender/default_par.medic ;
+
+
+##### control var #####
+my $load_reps = 1;
+my $clear_existing_reps = 1;	## If load_reps, should clear existing slack_table & vios?
+my $need_fix_setup = 1;		## Run fix_setup
+my $need_fix_trans = 0;		## Run fix_trans
+my $need_fix_hold = 1;		## Run fix_hold
+
+## ***NOTE***: setup/hold array also control load cellpin.attr in HOLD & TRANS
+my @setup_corners    = qw ( hv_ss_cold_max hv_tt_hot_max lv_tt_cold_max sv_ss_cold_max sv_ss_hot_max sv_tt_hot_max vhv_tt_hot_max );
+#hv_ff_cold_max
+my @setup_si_corners = qw ( hv_ss_cold_max_si hv_tt_hot_max_si lv_tt_cold_max_si sv_ss_cold_max_si sv_ss_hot_max_si sv_tt_hot_max_si vhv_tt_hot_max_si );
+#hv_ff_cold_max_si
+my @hold_corners     = qw ( hv_ff_cold_min hv_ff_hot_min hv_ss_cold_min lv_tt_cold_min sv_ff_hot_min sv_ss_cold_min sv_ss_hot_min );
+my @hold_si_corners  = qw ( hv_ff_cold_min_si hv_ff_hot_min_si hv_ss_cold_min_si lv_tt_cold_min_si sv_ff_hot_min_si sv_ss_cold_min_si sv_ss_hot_min_si );
+my @tran_corners     = qw ( sv_ss_cold_tran sv_ss_hot_tran lv_tt_cold_tran );
+my @tran_si_corners  = qw ( sv_ss_cold_tran_si sv_ss_hot_tran_si lv_tt_cold_tran_si );
+
+if ($load_reps == 1) {
+	############################################
+	## set dont touch or dont use attribute   ##
+	## on modules that we don't want to touch ##
+	############################################
+	set_dont_touch_timing find_modules -quiet all_macros;
+	set_dont_touch_timing (-io);
+	set_leaf SSYNC*;
+	set_leaf STRICTSYNC*;
+
+	set_dont_use_timing "*LVT";
+	set_dont_use_timing "*DYD*";
+	set_dont_use_timing "SDF*SAD*";
+	set_dont_use_timing "BUFFX*";
+	set_dont_use_timing "DEL400*";
+	set_dont_use_timing "DEL800*";
+	set_dont_use_timing "PGAOP_CLAMP_LO";
+	set_dont_use_timing "CLAMP_LO";
+	set_dont_use_timing "CKND3D*";
+	set_dont_use_timing "CKNR3D*";
+	set_dont_use_timing "SDFQD8*";
+	set_dont_use_timing "SDFQMDD8*";
+	set_dont_use_timing "SDFCNQMDD8*";
+	set_dont_use_timing "SDFQMDV2*";
+	set_dont_use_timing ".*TO";
+	set_dont_use_timing "*D16*";
+	set_dont_use_timing "*D18*";
+	set_dont_use_timing "*D20";
+	set_dont_use_timing "*D20_B";
+	set_dont_use_timing "*D24";
+	set_dont_use_timing "*D24_B";
+	set_dont_use_timing "*D20HVT";
+	set_dont_use_timing "*D20HVT_B";
+	set_dont_use_timing "*D22";
+	set_dont_use_timing "*D22_B";
+	set_dont_use_timing "*D22HVT";
+	set_dont_use_timing "*D22HVT_B";
+	set_dont_use_timing "*D24HVT";
+	set_dont_use_timing "*D24HVT_B";
+	
+    set_dont_use_timing "*NVT_CDP_*";
+    set_dont_use_timing "SMT*X1[0-9][0-9]*";
+    set_dont_use_timing "SMT*X[4-9][0-9]*";
+    set_dont_use_timing "NVT_CDP*";
+    set_dont_use_timing "NV_NDP*";
+    set_dont_use_timing "NV_NDP_CLKMX2X12*";
+    set_dont_use_timing "NV_NDP_CLKMX2X12*";
+    set_dont_use_timing "NV_NDP_CLKMX2X6*";
+    set_dont_use_timing "NV_NDP_CLKMX2X8*";
+    set_dont_use_timing "SMT_MXI*";
+    set_dont_use_timing "SMT_SDFF*";
+    set_dont_use_timing "SMT_SDFQ_V3*";
+    set_dont_use_timing "SMT_CLKBUFX160_H";
+    set_dont_use_timing "SMT_CLKBUFX160_V";
+    set_dont_use_timing "SMT_CLKMX2X16";
+    set_dont_use_timing "SMT_CLKMX2X32";
+    set_dont_use_timing "SMT_CKAN2*";
+    set_dont_use_timing "SMT_SSYNC2D";
+    set_dont_use_timing "SMT_SSYNC2D_C_PP";
+
+	   # dont use TO cells
+    set_dont_use_timing "NV_BUFX4N_0P9TO3P3";
+    set_dont_use_timing "NV_BUFX4NTO1_0P9TO3P3";
+    set_dont_use_timing "NV_BUFN_0P9TO3P3";
+    set_dont_use_timing "NV_BUFNTO1_0P9TO3P3";
+    set_dont_use_timing "NV_BUF_3P3TO0P9";
+    set_dont_use_timing "BUFFD36TO";
+    set_dont_use_timing "LNHSQD*";
+
+	#set_dont_touch_timing -drv_refs find_modules SDF*;
+    set_dont_touch_timing -drv_refs find_modules SDFQMDV*;
+    set_dont_use_timing SDFQMDV*;
+
+
+    @fixall_dont_use_timing = qw( NV_NDP_* NVT_NDP_* *HVT SDF*SAD* BUFFX* DEL400* DEL800* PGAOP_CLAMP_LO CLAMP_LO CKND3D* CKNR3D* SDFQD8* SDFQMDD8* SDFCNQMDD8* SDFQMDV2*);
+    push (@fixall_dont_use_timing,"SDF*SAD*","DEL400*","DEL800*","PGAOP_CLAMP_LO","CLAMP_LO","CLKBUF*","*TH","DLY*") ;
+    set_dont_use_timing "SDF*SAD*";
+    set_dont_use_timing "DEL400*";
+    set_dont_use_timing "DEL800*";
+    set_dont_use_timing "PGAOP_CLAMP_LO";
+    set_dont_use_timing "CLAMP_LO";
+    set_dont_use_timing "*HVT";
+    set_dont_use_timing "CLKBUF40";
+    set_dont_use_timing "CLKBUF48";
+    set_dont_use_timing "CLKBUF64";
+    set_dont_use_timing "CLKBUFX40";
+    set_dont_use_timing "CLKBUFX32";
+    set_dont_use_timing "CLKBUFX24";
+    set_dont_use_timing "CLKBUFX48";
+    set_dont_use_timing "CLKBUFX64";
+    set_dont_use_timing "*TH";
+    set_dont_use_timing "DLY*";
+    set_dont_use_timing "*X0";
+    set_dont_use_timing "*X1";
+    set_dont_use_timing "*X2";
+
+    @flops = get_flop_modules();
+    push @fixall_dont_use_timing, @flops;
+    foreach my $dont_use_pattern (@fixall_dont_use_timing) {
+      lprint "INFO: Setting user defined dont use timing on $dont_use_pattern\n";
+      set_dont_use_timing "$dont_use_pattern";
+    }
+	
+
+	echo "DUMPING set_dont_use_timing..."
+	my @dont_use_ref = report_dont_use_timing -all -verbose;
+	foreach my $dont_use_pattern (@dont_use_ref) {
+		echo "  $dont_use_pattern";
+	}
+
+	############################
+	## load timing attributes ##
+	############################
+	
+	if ($clear_existing_reps == 1) {
+	clear_slack_table;
+	clear_vios;
+	}
+
+	######## load timing slack table for setup fixing #########
+	if ($need_fix_setup == 1) {
+		foreach my $corner (@setup_corners @setup_si_corners) {
+			lprint ("##### loading report files for $corner:\n");
+			$pin_attr_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.std_max.flat.none.${datecode}.cellpin.attr.rep.gz";
+			if (-e $pin_attr_rep) {
+				load_pin_attr_rep $pin_attr_rep;
+	        }
+			$inter_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.std_max.flat.none.${datecode}.unified.pba.viol.gz";
+			load_rep -add -keep max_path $inter_rep
+		}
+	}
+
+	######### load timing slack table for hold fixing #########
+	if ($need_fix_hold == 1) {
+		## IF not already loaded... needed for checking setup impact of hold fixes
+		if ($need_fix_setup == 0) {
+		foreach my $corner (@setup_corners @setup_si_corners) {
+			$pin_attr_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.std_max.flat.none.${datecode}.cellpin.attr.rep.gz";
+			if (-e $pin_attr_rep) {
+                load_pin_attr_rep $pin_attr_rep;
+            }
+		}
+		}
+
+		foreach my $corner (@hold_corners) {
+			lprint ("##### loading report files for $corner:\n");
+			$pin_attr_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.std_min.flat.none.${datecode}.cellpin.attr.rep.gz";
+			if (-e $pin_attr_rep) {
+                load_pin_attr_rep $pin_attr_rep;
+            }
+			$inter_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.std_min.flat.none.${datecode}.unified.pba.viol.gz";
+		    load_rep -add -keep min_path $inter_rep;
+		}
+	}
+
+	######### load timing slack table for trans fixing #########
+	if ($need_fix_trans == 1) {
+		## IF not already loaded... needed for checking setup/hold impact of trans fixes
+		if ($need_fix_setup == 0) {
+		foreach my $corner (@setup_corners @setup_si_corners) {
+			$pin_attr_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.std_max.flat.none.${datecode}.cellpin.attr.rep.gz";
+			if (-e $pin_attr_rep) {
+                load_pin_attr_rep $pin_attr_rep;
+            }
+		}
+		}
+		## IF not already loaded... needed for checking setup/hold impact of trans fixes
+		if ($need_fix_hold == 0) {
+		foreach my $corner (@hold_corners @hold_si_corners) {
+			$pin_attr_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.std_min.flat.none.${datecode}.cellpin.attr.rep.gz";
+			if (-e $pin_attr_rep) {
+                load_pin_attr_rep $pin_attr_rep;
+            }
+		}
+		}
+
+		foreach my $corner (@setup_corners @setup_si_corners) {
+			lprint ("##### loading report files for $corner:\n");
+	        	$inter_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.std_max.flat.none.${datecode}.unified.pba.viol.gz";
+		        load_rep -add -keep max_tran $inter_rep
+		        load_rep -add -keep max_cap $inter_rep
+		}
+		foreach my $corner (@tran_corners) {
+			lprint ("##### loading report files for $corner:\n");
+	        	$inter_rep = "$rep_dir/${top_name}..anno${anno_rev}.pt.${corner}.cmnone.flat.none.${datecode}.unified.pba.viol.gz";
+		        load_rep -add -keep max_tran $inter_rep
+		        load_rep -add -keep max_cap $inter_rep
+		}
+	}
+}
+
+##################
+## Setup fixing ##
+##################
+if ($need_fix_setup == 1) {
+	my @setup_group = qw( * );
+	my @setup_method = qw( po2 svt upsize );
+		#MENDER > list_setup_opts
+		# po4hvt
+		# po2hvt
+		# hvt
+		# po4
+		# po2
+		# svt
+		# po4lvt
+		# po2lvt
+		# lvt
+		# po4ult
+		# po2ult
+		# ult
+		# dly_reduce
+		# load_isolation
+		# buffer_insertion
+		# buffer_removal
+		# placement_opt
+		# upsize
+		# skew
+		# reroute
+		# ndr_tree
+		# ndr_promote
+		# flop_demerge
+		# resyn
+
+	init_eco "${datecode}_fixsetup";
+
+	#Fixing setting
+	set_top ${top_name};
+	set_eco_legal_delta 15;
+	set_eco_disable_check_scan ();
+	set_eco_legal_placement on;
+    set_eco_legal_placement_top on;
+    #set_eco_disable_design_check;
+    #set_eco_disable_placement_check;
+    set_eco_allow_placement_errors;
+    #set_eco_allow_design_errors;
+
+	set_ref_legal_rows;
+
+
+	fix_setup_config -enable_mcmm -target_slack ['*' => 0.000] 
+		## Example of per_corner slack target..
+		##fix_setup_config -enable_mcmm -target_slack [lv_slow* => -0.05, hv_slow* => 0.001, '*' => -0.005] 
+
+	## Distill to Inter-Par paths
+	@inter_par_pins = map (attr_of_vio ("end_pin" => $_ ), all_vios "-class" , "path" , "-type" , "max" , "-filter" , "is_inter_par")
+	fix_setup -pins @inter_par_pins -groups @setup_group -limit_movement 10 -sig_slack 0.006 -enable @setup_method -no_skew -legal_effort_factor default -use_rep_slack;
+
+	#set_eco_disable_design_check;
+	#set_eco_disable_placement_check;
+	set_eco_allow_placement_errors;
+	#set_eco_allow_design_errors;
+	#set_eco_allow_dont_use_errors;
+
+	# These are cells we allow in the netlist, but not for optimization, remove_dont_use_timing on these before write_eco
+	foreach my $dont_use_pattern (@fixall_dont_use_timing) {
+		remove_dont_use_timing "$dont_use_pattern";
+	}
+
+	select_placement;
+	write_eco ${eco_dir}/*.${datecode}_fixsetup_$suffix.dcsh;
+}
+
+##################
+## Trans fixing ##
+##################
+if ($need_fix_trans == 1) {
+
+	init_eco "${datecode}_fixtrans";
+	
+	set_top ${top_name};
+	set_eco_legal_delta 15;
+	set_eco_disable_check_scan ();
+	set_eco_legal_placement on;
+    set_eco_legal_placement_top on;
+    #set_eco_disable_design_check;
+    #set_eco_disable_placement_check;
+    set_eco_allow_placement_errors;
+    #set_eco_allow_design_errors;
+	#set_eco_allow_dont_use_errors;
+
+	# ??not sure i need this??? set_max_tran 0.600;
+
+	set_ref_legal_rows;
+
+	fix_trans -top_only -favor_upsize -target_slack 0 -insert_legal 30 -upsize_legal 30 -dont_touch_macros -dont_touch_clocks;
+
+	# These are cells we allow in the netlist, but not for optimization, remove_dont_use_timing on these before write_eco
+	foreach my $dont_use_pattern (@fixall_dont_use_timing) {
+		remove_dont_use_timing "$dont_use_pattern";
+	}
+
+	select_placement;
+	write_eco ${eco_dir}/*.${datecode}_fixtrans_$suffix.dcsh;
+}
+
+#################
+## Hold fixing ##
+#################
+if ($need_fix_hold == 1) {
+	my @hold_group = qw( * );
+	my @hold_method = qw( buffer_insertion );
+		#MENDER > list_hold_opts
+		# th
+		# downsize
+		# pin_swap
+		# buffer_insertion
+		# dly_increase
+		# flop_type_swap
+		# reuse
+		# si_fix
+		# skew
+		# skip_eco_tracker
+
+	init_eco ${datecode}_fixhold;
+
+	set_top ${top_name};
+	set_eco_legal_delta 15;
+	set_eco_disable_check_scan ();
+	set_eco_legal_placement on;
+	set_ref_legal_rows;
+
+	## Distill to Inter-Par paths
+	@inter_par_pins = map (attr_of_vio ("end_pin" => $_ ), all_vios "-class" , "path" , "-type" , "min" , "-filter" , "is_inter_par")
+	fix_hold -only_pins @inter_par_pins -groups @hold_group -target_slack -0.1 -setup_target_slack 0.1 -no_skew -insert_legal 30 -upsize_legal 15 -enable @hold_method -ignore_slack_diffs -skip_missing  -skip_pins "*/SI||*/SCIN_*";
+
+	#set_eco_disable_design_check;
+	#set_eco_disable_placement_check;
+	set_eco_allow_placement_errors;
+	#set_eco_allow_design_errors;
+	#set_eco_allow_dont_use_errors;
+	
+
+	# These are cells we allow in the netlist, but not for optimization, remove_dont_use_timing on these before write_eco
+	foreach my $dont_use_pattern (@fixall_dont_use_timing) {
+		remove_dont_use_timing "$dont_use_pattern";
+	}
+	select_placement;
+	write_eco ${eco_dir}/*.${datecode}_fixhold_$suffix.dcsh;
+}
+
+close_log

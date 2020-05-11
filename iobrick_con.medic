@@ -1,0 +1,19 @@
+@pins = get_pins "*CD*/TXDP*" ;
+
+foreach (sort @pins) {
+  @conns = get_conns $_ ;
+  $port = $conns[0][0] ;
+  $port =~ /ifp(.)_(.*)/ ;
+  if ($1 eq "C") {
+    $port = "ifpD_$2" ;
+  }elsif ($1 eq "D") {
+    $port = "ifpC_$2" ;
+  }else {
+    print "double check $_ $port ;\n"
+  }
+  ($x1,$y1) = get_pin_xy $_ ;
+  ($x2,$y2) = get_pin_xy $port ;
+  $dist = abs($x2-$x1) + abs($y2-$y1) ;
+  print "$_ $port $dist\n" ;
+}
+

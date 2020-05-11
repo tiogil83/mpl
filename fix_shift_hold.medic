@@ -1,0 +1,69 @@
+open IN, "t0.mar27.shift_min.txt" ;
+open OUT, ">> insert_dly.txt" ;
+
+while(<IN>){
+#19:668   19    min  -0.004 ffg_105c_0p6v.typical_T105  jtag_reg_tck             (jtag_reg_tck => jtag_reg_tck)                         gmgpad0disp0/u_GMG_T0_OTHER0_1500_wrapper/u_GMG_T0_OTHER0_1500_retime_0/i1500_data_pipe_gmgpad0disp0_2/out_reg/CP                                                                                        gmgpad0disp0/u_GMG_T0_OTHER0_1500_wrapper/u_GMG_T0_OTHER0_1500_retime_0/i1500_data_pipe_gmgpad0disp0_3/out_reg/D
+#48:3610  348   min  -0.064 ffg_105c_1p21v.typical_T105 test_serdes4f_clk_bottom_leg (test_serdes1f_clk_bottom_leg => test_serdes4f_clk_bottom_leg) gmgpad0hbmd0/tam_lite/UI_DFT_TAM_TopSer/serdes_1f_capture_19_reg/CPN                                                                                                                                               gmgpad0hbmd0/tam_lite/UI_DFT_TAM_TopSer/serdes_sf_shift_19_reg/D
+
+  if (/\S+\s+\S+\s+min\s+(\S+)\s+\S+\s+\S+\s+\(.*\)\s+(\S+)\s+(\S+)/){
+     $slack = $1 ;
+     $start_pin = $2 ;
+     $end_pin = $3 ;
+     $margin_start = get_slack $start_pin ;
+     $margin = get_slack $end_pin ;
+     chomp $margin ;
+     if(($margin < 2) | ($margin_start < 2)) {
+       print OUT "margin might be not enough : $margin $end_pin\n" ;
+     }
+     #if($slack > -0.01) {
+     #  print OUT "create_buffer_at $end_pin DEL015D1HVT ;\n" ; 
+     #}elsif($slack > -0.02) {
+     #  print OUT "create_buffer_at $end_pin DEL015D1HVT ;\n" ;
+     #  print OUT "create_buffer_at $end_pin DEL015D1HVT ;\n" ;
+     #}elsif($slack > -0.04) {
+     #  print OUT "create_buffer_at $end_pin DEL060D1HVT ;\n" ;
+     #}elsif($slack > -0.08) {
+     #  print OUT "create_buffer_at $end_pin DEL060D1HVT ;\n" ;
+     #  print OUT "create_buffer_at $end_pin DEL015D1HVT ;\n" ;
+     #}elsif($slack > -0.1) {
+     #  print OUT "create_buffer_at $end_pin DEL100D1HVT ;\n" ;
+     #}elsif($slack > -0.15) {
+     #  print OUT "create_buffer_at $end_pin DEL100D1HVT ;\n" ;
+     #  print OUT "create_buffer_at $end_pin DEL060D1HVT ;\n" ;
+     #}elsif($slack > -0.2) {
+     #  print OUT "create_buffer_at $end_pin DEL0D100HVT ;\n" ;
+     #  print OUT "create_buffer_at $end_pin DEL0D100HVT ;\n" ;
+     #}else{
+     #  print OUT "create_buffer_at $end_pin DEL100D1HVT ;\n" ;
+     #  print OUT "create_buffer_at $end_pin DEL100D1HVT ;\n" ;
+     #  print OUT "create_buffer_at $end_pin DEL100D1HVT ;\n" ;
+     #}
+     if($slack > -0.01) {
+       print OUT "create_buffer_at $start_pin DEL015D1HVT ;\n" ; 
+     }elsif($slack > -0.02) {
+       print OUT "create_buffer_at $start_pin DEL015D1HVT ;\n" ;
+       print OUT "create_buffer_at $start_pin DEL015D1HVT ;\n" ;
+     }elsif($slack > -0.04) {
+       print OUT "create_buffer_at $start_pin DEL060D1HVT ;\n" ;
+     }elsif($slack > -0.08) {
+       print OUT "create_buffer_at $start_pin DEL060D1HVT ;\n" ;
+       print OUT "create_buffer_at $start_pin DEL015D1HVT ;\n" ;
+     }elsif($slack > -0.1) {
+       print OUT "create_buffer_at $start_pin DEL100D1HVT ;\n" ;
+     }elsif($slack > -0.15) {
+       print OUT "create_buffer_at $start_pin DEL100D1HVT ;\n" ;
+       print OUT "create_buffer_at $start_pin DEL060D1HVT ;\n" ;
+     }elsif($slack > -0.2) {
+       print OUT "create_buffer_at $start_pin DEL0D100HVT ;\n" ;
+       print OUT "create_buffer_at $start_pin DEL0D100HVT ;\n" ;
+     }else{
+       print OUT "create_buffer_at $start_pin DEL100D1HVT ;\n" ;
+       print OUT "create_buffer_at $start_pin DEL100D1HVT ;\n" ;
+       print OUT "create_buffer_at $start_pin DEL100D1HVT ;\n" ;
+     }
+  }
+}
+
+close IN ;
+close OUT ;
+

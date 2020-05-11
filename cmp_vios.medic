@@ -1,0 +1,21 @@
+#$vs1 = define_vio_set -add "project_corner=~'ffg_105c_1p21v_min_si' and class=~/hold/ ";
+select_vios -filter 'project_corner=~/ffg_0c_0p5v_min_si/ and type_class =~ /min_path/ and slack < -0.000';
+#select_vios ($vs1);
+@vio_corner1=();
+foreach my $vio (all_vios)
+{push @vio_corner1 attr_of_vio(end_pin=>$vio);}
+#$vs2 = define_vio_set -add "project_corner=~'ssg_0c_0p6v_min_si' and class =~/hold/ "
+select_vios -filter 'project_corner=~/ffg_0c_0p6v_min_si/ and type_class =~ /min_path/ and slack < -0.000';
+#select_vios ($vs2);
+@vio_corner2=();
+foreach my $vio (all_vios) {push @vio_corner2 attr_of_vio(end_pin=>$vio);}
+#Get common
+@common_num = () ;
+@common_num = (get_intersection @vio_corner1 @vio_corner2) ;
+$common_num = $#common_num + 1 ;
+print $common_num ;
+#Get difference
+@diff_num = () ;
+@diff_num = (get_missing @vio_corner1 @vio_corner2) ;
+$diff_num = $#diff_num + 1 ;
+print $diff_num ;

@@ -1,0 +1,8 @@
+@insts = load_array "/home/junw/diff.sync" ;
+open OUT, "> /home/junw/ref" ;
+foreach (@insts) {
+  chomp ;
+  $ref = get_ref $_ ;
+  print OUT  "$_ $ref\n" ;
+}
+close OUT ;

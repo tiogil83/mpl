@@ -1,0 +1,32 @@
+@serdes_anchor_files = glob "/home/scratch.gp104_NV_gpd_t0/gp104/gp104/layout/revP6.0/netlists/serdes/*.anchor_serdesclk.map" ;
+
+foreach $file (@serdes_anchor_files) {
+  $file =~ /.*\/(.*)\.anchor_serdesclk\.map/ ;
+  $par = $1 ;
+  $par_head = lc $par ;
+  open IN, "$file" ;
+  $out_file = $file.".out" ;
+  open OUT, ">> $out_file" ; 
+  while(<IN>) {
+    $line = $_ ;
+    $line =~ /(\S+) (\S+) (\S+)/ ;
+    $pin = $1 ;
+    $pin = "$par_head/$pin" ;
+    $clock = $2 ;
+    $polar = $3 ;
+    $polar_check = get_root -sense $pin ;
+    if (($polar_check =~ /^!/) && ($polar eq "-")) {
+      print OUT "ok with $pin $clock $polar_check $polar\n" ; 
+    }elsif(($polar_check =~ /^!/) && ($polar eq "+")){
+      print OUT "not ok with $pin $clock $polar_check $polar\n" ;
+    }elsif(($polar_check !~ /^!/) && ($polar eq "-")){
+      print OUT "not ok with $pin $clock $polar_check $polar\n" ;
+    }elsif(($polar_check !~ /^!/) && ($polar eq "+")){
+      print OUT "ok with $pin $clock $polar_check $polar\n" ;
+    }else {
+      print OUT "need double check in $pin $clock $polar_check $polar\n" ;
+    }
+  }
+  close IN ;
+  close OUT ; 
+}

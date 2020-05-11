@@ -1,0 +1,14 @@
+open IN, "/home/junw/GC6" ;
+
+while(<IN>){
+  (/(.*?) (.*)/g) ;
+  $net = $1 ;
+  $ref = get_ref (get_loads -inst $net) ;
+  if($ref !~ /_VDVDTOT/){
+    print "$net $ref\n" ;
+  }else{
+    next ;
+  }
+}
+
+close IN ;

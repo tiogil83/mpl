@@ -1,0 +1,18 @@
+$hold_set = define_vio_set (-filter => "slack < 0 and type eq 'min' and end_module =~ /FB/ and disabled == 0") ;
+select_vios $hold_set
+@all = all_vios ;
+open OUT, "> y" ;
+@p = () ;
+foreach $vio (@all) {
+  $start_pin = attr_of_vio ("start_pin", $vio) ;
+  $end_pin = attr_of_vio ("end_pin", $vio) ;
+  push @p, "$start_pin $end_pin" ; 
+}
+
+@np = remove_duplicates @p ;
+
+foreach (@np) {
+  print OUT "$_\n" ;
+}
+
+close OUT ;

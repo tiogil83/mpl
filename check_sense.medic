@@ -1,0 +1,42 @@
+@jtag_anchor_files = glob "/home/scratch.gp104_NV_gpd_t0/gp104/gp104/layout/revP6.0/netlists/jtag/*.anchor_jtagclk.map" ;
+
+foreach $file (@jtag_anchor_files) {
+  $file =~ /.*\/(.*)\.anchor_jtagclk\.map/ ;
+  $par = $1 ;
+  $par_head = lc $par ;
+  open IN, "$file" ;
+  $out_file = $file.".out" ;
+  open OUT, ">> $out_file" ; 
+  while(<IN>) {
+    $line = $_ ;
+    $line =~ /(\S+) (\S+) (\S+)/ ;
+    $pin = $1 ;
+    $pin = "$par_head/$pin" ;
+    $clock = $2 ;
+    $polar = $3 ;
+    $polar_check = get_root -sense $pin ;
+    if ((($polar_check =~ /^!Jtag_reg/) || ($polar_check =~ /^!clk2io_Jtag_reg/)) && ($polar eq "-")) {
+      print OUT "ok with $pin $clock $polar_check $polar\n" ; 
+    }elsif((($polar_check =~ /^!Jtag_reg/) || ($polar_check =~ /^!clk2io_Jtag_reg/)) && ($polar eq "+")){
+      print OUT "not ok with $pin $clock $polar_check $polar\n" ;
+    }elsif((($polar_check =~ /^Jtag_reg/) || ($polar_check =~ /^clk2io_Jtag_reg/)) && ($polar eq "-")){
+      print OUT "not ok with $pin $clock $polar_check $polar\n" ;
+    }elsif((($polar_check =~ /^Jtag_reg/) || ($polar_check =~ /^clk2io_Jtag_reg/)) && ($polar eq "+")){
+      print OUT "ok with $pin $clock $polar_check $polar\n" ;
+    }else {
+      $polar_pin = $polar_check ;
+      $polar_pin =~ s/!?(.*)/$1/ ;
+      $polar_driver = get_driver $polar_pin ;
+      if($polar_driver =~ /DOUT$/) { 
+         $polar_pre_driver = $polar_driver ;
+         $polar_pre_driver =~ s/DOUT/DIN/g ; 
+         $polar_pre_root = get_root -sense $polar_pre_driver
+         print OUT "double check $pin $clock $polar_check $polar_pre_root $polar\n" ;
+      }else{
+         print OUT "manual check $pin $clock $polar_check $polar_pre_root $polar\n" ;
+      }
+    }
+  }
+  close IN ;
+  close OUT ; 
+}

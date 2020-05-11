@@ -1,0 +1,98 @@
+open_log x.log ;
+my @scan_en_bufs = get_pins */UJ_ANCHOR_scan_en_*/Z ;
+my @out_array = () ;
+my $top = get_top ;
+
+foreach my $scan_buf (@scan_en_bufs) {
+  #$par = $scan_buf ;
+  #$par =~ s/(.*?)\/.*/$1/ ;
+  #$par = uc $par ;
+  #$scan_buf =~ s/.*?\/(.*)/$1/ ;
+  my @fanout = get_fan2 -fanout $scan_buf -unate -end -pins ;
+  foreach my $fanout_pin (@fanout) {
+    my $par = $fanout_pin ;
+    $par =~ s/(.*?)\/.*/$1/ ;
+    $par = uc $par ;
+    my $par_pin = $fanout_pin ;
+    $par_pin =~ s/.*?\/(.*)/$1/ ;
+
+    set_top $par ;
+    my %macro_insts ;
+    unless ((attr_of_pin ("is_local", $par_pin)) == 1) {
+      my @cons = get_pin_context_whier $par_pin ;
+      $par = lc $par ;
+      my $par_macro_inst = "$par/$cons[0]}" ;
+      unless (exists $macro_insts{$par_macro_inst}) {
+        print "$par $par_pin $cons[0] $cons[1] $cons[2] $cons[3] $cons[4]\n" ;
+        my $macro_inst = $cons[0] ;
+        my $macro_ref = $cons[1] ;
+        my $macro_pin = "$cons[2]/$cons[4]" ;
+        set_top $macro_ref ;
+        my $macro_port = get_root -pin $macro_pin ;
+        $fanout_pin = "$par/$macro_inst/$macro_port" ;
+        $par_macro_inst = "$par/$macro_inst" ;
+        $macro_insts{$par_macro_inst} = 1 ;
+      } else {
+        next ;
+      }
+    } 
+    set_top $top ;
+    my $root = get_root $fanout_pin -sense ;
+    my $scan_en_source ;
+    if ($root =~ /UJ_ANCHOR_scan_en_gpio/) {
+      $scan_en_source = " scan_en_gpio0" ;
+    }elsif ($root =~ /UJ_ANCHOR_scan_en_disp/) {
+      $scan_en_source = " scan_en_disp0" ;
+    }elsif ($root =~ /UJ_ANCHOR_scan_en_pex/) {
+      $scan_en_source = " scan_en_pex0" ;
+    }else{
+      lprint "double check the source.\n"
+    }
+
+    my $polarity ;
+    if ($root =~ /^!/) {
+      $polarity = " -" ;
+    }else{
+      $polarity = " +" ;
+    }
+    my @path = get_path -to $fanout_pin -from $scan_buf ;
+    my $i ;
+    my $fanout_pin_out = $fanout_pin.$scan_en_source.$polarity ;
+    my @path_array = () ;
+    for $i (0..$#path) {
+      my $path_buf = "$path[$i][0]$path[$i][1]" ;
+      push @path_array, $path_buf ;
+    }
+    my $path_pat = grep (/\/UJ/, @path_array) ;
+    if ($path_pat) {
+      foreach (@path_array) {
+        if (/\/UJ/ and !(/0\/UJ_ANCHOR_scan_en_/)) {
+          $fanout_pin_out = $_.$scan_en_source.$polarity ;
+          push @out_array, $fanout_pin_out ;
+          last ;
+        }
+      }
+    }else{
+      push @out_array, $fanout_pin_out ; 
+    }
+  }
+}
+my @out = remove_duplicates @out_array ;
+foreach (@out) {
+  my $par = $_ ;
+  $par =~ s/(.*?)\/.*/$1/ ;
+  $par = uc $par ;
+  my $par_pin = $_ ;
+  $par_pin =~ s/.*?\/(.*)/$1/ ; 
+  my $out_file = "$par.flop_scanen.map"
+  if (!(-e "$out_file")) {
+     open OUT_PARTITION, "> $out_file" ;
+     print OUT_PARTITION "${par_pin}$scan_en_source$polarity\n" ;
+     close OUT_PARTITION ;
+  }else{
+     open OUT_PARTITION, ">> $out_file" ;
+     print OUT_PARTITION "${par_pin}$scan_en_source$polarity\n" ;
+     close OUT_PARTITION ;
+  }
+}
+close_log ;

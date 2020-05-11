@@ -1,0 +1,15 @@
+open IN, "gp100/doc/GC6_nets" ;
+open OUT, "> gp100/timing_scripts/out.txt" ;
+
+while(<IN>){
+  (/(\S+).*/) ;
+  $net = $1 ;
+  chomp $net ;
+  @loads = get_loads $net ;
+  foreach $load(@loads){
+    print OUT "$load\n" ;
+  }
+}
+
+close IN ;
+close OUT ;

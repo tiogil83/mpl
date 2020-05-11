@@ -1,0 +1,24 @@
+open IN, "/home/junw/driver.list.Dec16.data.GMGPAD0TEST0" ;
+open OUT, "> /home/junw/test" ;
+
+while(<IN>){
+  (/(.*?) (.*)/) ;
+  $net = $1 ;
+  $net = "gmgpad0test0/$net" ;
+  $vio = $2 ;
+  @loads = get_loads -inst $net ;
+  %refs = {} ;
+  foreach (@loads){
+    chomp ;
+    $ref = get_ref $_ ;
+    $refs{$ref} = 1 ; 
+  }
+  if (exists $refs{BDMTARP_GFC_VDP1P1P1P1}) {
+     print OUT "$net pad $vio\n" ;
+  }else{
+     print OUT "$net no pad $vio\n" ;
+  }
+}
+
+close IN ;
+close OUT ;

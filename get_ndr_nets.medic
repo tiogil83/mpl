@@ -1,0 +1,25 @@
+@lists = glob "/home/junw/driver.list.Dec8.*" ;
+print @lists; 
+foreach (@lists) {
+  open IN, "$_" ;
+  $out_ndr = $_.".ndr" ;
+  $out_nondr = $_.".nondr" ;
+  /(GMGPAD0.*)/ ;
+  $par = $1 ;
+  open OUTNDR, "> $out_ndr" ;
+  open OUTNONDR, "> $out_nondr" ;
+  set_top $par ;
+  while(<IN>){
+    chomp ;
+    /(.*?) (.*)/
+    $net = $1 ;
+    if(is_wide_net $net){
+      print OUTNDR "$_\n" ; 
+    }else{
+      print OUTNONDR "$_\n" ;
+    }
+  }
+  close IN ;
+  close OUTNDR ;
+  close OUTNONDR ;
+}
