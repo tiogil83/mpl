@@ -260,7 +260,7 @@ Tsub load_def_region_files => << 'END' ;
 
     #of top is nv_top , will read top fp.def
     my $top_level_inst ;
-    foreach my $chiplet (keys $CONFIG->{partitioning}{chiplets}) {
+    foreach my $chiplet (keys %{$CONFIG->{partitioning}{chiplets}}) {
         if (exists $CONFIG->{partitioning}{chiplets}{$chiplet}{is_toplevel}) {
             my $top_level_inst = $chiplet ;
         }
@@ -464,7 +464,7 @@ Tsub load_def_files => << 'END' ;
 
     #of top is nv_top , will read top fp.def
     my $top_level_inst ;
-    foreach my $chiplet (keys $CONFIG->{partitioning}{chiplets}) {
+    foreach my $chiplet (keys %{$CONFIG->{partitioning}{chiplets}}) {
         if (exists $CONFIG->{partitioning}{chiplets}{$chiplet}{is_toplevel}) {
             my $top_level_inst = $chiplet ;
         }
